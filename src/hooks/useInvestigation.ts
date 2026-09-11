@@ -129,6 +129,7 @@ export function useInvestigation(initial?: {
         setAttachments(sentAttachments);
       } finally {
         setIsThinking(false);
+        setPendingSteps(null);
       }
     },
     [attachments, degreeLevel, fundingType, language, pushAssistantTurn],
@@ -156,6 +157,7 @@ export function useInvestigation(initial?: {
         setError(cause instanceof Error ? cause.message : "Could not upload that file.");
       } finally {
         setIsThinking(false);
+        setPendingSteps(null);
       }
     },
     [ensureInvestigation],
@@ -188,6 +190,7 @@ export function useInvestigation(initial?: {
         setError(cause instanceof Error ? cause.message : "Could not submit that message.");
       } finally {
         setIsThinking(false);
+        setPendingSteps(null);
       }
     },
     [ensureInvestigation],
@@ -220,6 +223,7 @@ export function useInvestigation(initial?: {
         setError(cause instanceof Error ? cause.message : "Could not submit that link.");
       } finally {
         setIsThinking(false);
+        setPendingSteps(null);
       }
     },
     [ensureInvestigation],
@@ -254,6 +258,7 @@ export function useInvestigation(initial?: {
       setError(cause instanceof Error ? cause.message : "Could not load the demo case.");
     } finally {
       setIsThinking(false);
+      setPendingSteps(null);
     }
   }, [pushAssistantTurn]);
 
@@ -271,6 +276,7 @@ export function useInvestigation(initial?: {
       setError(cause instanceof Error ? cause.message : "Could not open that investigation.");
     } finally {
       setIsThinking(false);
+      setPendingSteps(null);
     }
   }, []);
 
@@ -281,10 +287,6 @@ export function useInvestigation(initial?: {
     setAttachments([]);
     setError(null);
   }, []);
-
-  useEffect(() => {
-    if (!isThinking) setPendingSteps(null);
-  }, [isThinking]);
 
   const latestResult = useMemo(() => {
     for (let index = messages.length - 1; index >= 0; index -= 1) {
