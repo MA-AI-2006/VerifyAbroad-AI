@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import {
   ClipboardList,
   FileText,
@@ -64,6 +65,11 @@ export function AttachEvidenceModal({
   const [officialUrl, setOfficialUrl] = useState<string | null>(null);
   const [officialUrlState, setOfficialUrlState] = useState<"loading" | "ready" | "unavailable">(
     "loading",
+  );
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
   );
   const fileInputRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -133,7 +139,7 @@ export function AttachEvidenceModal({
     };
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!open || !mounted) return null;
 
   const acceptFile = (incoming: File | null | undefined) => {
     if (!incoming) return;
@@ -168,13 +174,13 @@ export function AttachEvidenceModal({
     onClose();
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto p-3 sm:p-6">
       <button
         type="button"
         aria-label="Close attach evidence"
         onClick={onClose}
-        className="absolute inset-0 bg-ink-900/35 backdrop-blur-sm"
+        className="fixed inset-0 bg-ink-900/40 backdrop-blur-sm"
       />
 
       <div
@@ -182,7 +188,7 @@ export function AttachEvidenceModal({
         role="dialog"
         aria-modal="true"
         aria-label="Attach Evidence to Investigation"
-        className="pop-in relative flex max-h-[94dvh] w-full max-w-3xl flex-col overflow-hidden rounded-[26px] border border-white bg-canvas shadow-[0_40px_90px_-40px_rgba(34,48,74,0.8)] sm:max-h-[90dvh] sm:rounded-[32px]"
+        className="pop-in relative my-auto flex max-h-[94dvh] w-full max-w-3xl flex-col overflow-hidden rounded-[26px] border border-white bg-canvas shadow-[0_40px_90px_-40px_rgba(34,48,74,0.8)] sm:max-h-[90dvh] sm:rounded-[32px]"
       >
         {/* Header */}
         <div className="grad-panel shrink-0 border-b border-white px-5 py-4 sm:px-6 sm:py-5">
@@ -521,6 +527,7 @@ export function AttachEvidenceModal({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

@@ -315,6 +315,68 @@ export const api = {
     const qs = sp.toString();
     return request<{ guides: unknown[]; total: number }>(`/safety-guides${qs ? `?${qs}` : ""}`);
   },
+
+  checkSanctions(name: string, schema?: string) {
+    const sp = new URLSearchParams({ q: name });
+    if (schema) sp.set("schema", schema);
+    return request<{
+      query: string;
+      hasMatch: boolean;
+      highestRisk: "sanctioned" | "warning" | "clean";
+      summary: string;
+      matches: Array<{
+        id: string;
+        caption: string;
+        risk: string;
+        datasets: string[];
+        reason?: string;
+      }>;
+    }>(`/sanctions/check?${sp.toString()}`);
+  },
+
+  searchTavily(query: string, options?: { depth?: "basic" | "advanced"; limit?: number }) {
+    const sp = new URLSearchParams({ q: query });
+    if (options?.depth) sp.set("depth", options.depth);
+    if (options?.limit) sp.set("limit", String(options.limit));
+    return request<{
+      query: string;
+      answer?: string;
+      results: Array<{ title: string; url: string; content: string; score: number }>;
+      source: string;
+    }>(`/tavily/search?${sp.toString()}`);
+  },
+
+  geminiGroundedSearch(context: {
+    university?: string;
+    consultant?: string;
+    country?: string;
+    offerDetails?: string;
+  }) {
+    return request<{
+      analysis: string;
+      officialLinks: Array<{ title: string; url: string }>;
+      riskIndicators: string[];
+      grounded: boolean;
+    }>("/gemini/search", {
+      method: "POST",
+      body: JSON.stringify({ context }),
+    });
+  },
+
+  queryKnowledgeBase(query: string, synthesize = false) {
+    const sp = new URLSearchParams({ q: query, synthesize: String(synthesize) });
+    return request<{
+      answer?: string;
+      results?: Array<{ title: string; source: string; content: string; score: number }>;
+      sources?: Array<{ title: string; source: string; score: number }>;
+    }>(`/rag/query?${sp.toString()}`);
+  },
+
+  getKnowledgeDocuments() {
+    return request<{ count: number; documents: Array<{ id: string; title: string; source: string; chunkCount: number }> }>(
+      "/rag/documents",
+    );
+  },
 };
 
 /**

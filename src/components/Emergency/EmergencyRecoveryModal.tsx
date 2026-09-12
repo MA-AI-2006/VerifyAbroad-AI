@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import { ExternalLink, LifeBuoy, Loader2, ShieldCheck, X } from "lucide-react";
 
 import { api } from "@/services/api";
@@ -29,6 +30,11 @@ export function EmergencyRecoveryModal({
   variant?: "sidebar" | "compact";
 }) {
   const [open, setOpen] = useState(false);
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
   const [data, setData] = useState<EmergencyPayload | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -109,23 +115,24 @@ export function EmergencyRecoveryModal({
         </button>
       )}
 
-      {open ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6">
-          {/* Backdrop only — clicks inside the panel never close the modal */}
-          <button
-            type="button"
-            aria-label="Close emergency protocols"
-            onClick={() => setOpen(false)}
-            className="absolute inset-0 bg-ink-900/35 backdrop-blur-sm"
-          />
+      {open && mounted
+        ? createPortal(
+            <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto p-3 sm:p-6">
+              {/* Backdrop only — clicks inside the panel never close the modal */}
+              <button
+                type="button"
+                aria-label="Close emergency protocols"
+                onClick={() => setOpen(false)}
+                className="fixed inset-0 bg-ink-900/40 backdrop-blur-sm"
+              />
 
-          <div
-            ref={panelRef}
-            role="dialog"
-            aria-modal="true"
-            aria-label={data?.title ?? "Emergency Fraud and Recovery Protocols"}
-            className="pop-in relative flex max-h-[94dvh] w-full max-w-4xl flex-col overflow-hidden rounded-[26px] border border-white bg-canvas shadow-[0_40px_90px_-40px_rgba(34,48,74,0.85)] sm:max-h-[90dvh] sm:rounded-[32px]"
-          >
+              <div
+                ref={panelRef}
+                role="dialog"
+                aria-modal="true"
+                aria-label={data?.title ?? "Emergency Fraud and Recovery Protocols"}
+                className="pop-in relative my-auto flex max-h-[94dvh] w-full max-w-4xl flex-col overflow-hidden rounded-[26px] border border-white bg-canvas shadow-[0_40px_90px_-40px_rgba(34,48,74,0.85)] sm:max-h-[90dvh] sm:rounded-[32px]"
+              >
             {/* Header (stays visible while the content scrolls) */}
             <div className="grad-coral shrink-0 border-b border-white px-5 py-4 sm:px-6 sm:py-5">
               <div className="flex items-start justify-between gap-3">
@@ -295,9 +302,11 @@ export function EmergencyRecoveryModal({
                 </button>
               </div>
             </div>
-          </div>
-        </div>
-      ) : null}
+            </div>
+          </div>,
+          document.body,
+        )
+      : null}
     </>
   );
 }

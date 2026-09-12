@@ -4,6 +4,8 @@ import { messagesToCorpus, runAssessment } from "@/server/engine/assess";
 import { t } from "@/server/engine/phrases";
 import { maybeEnrichReply } from "@/server/llm";
 import { loadVerificationData } from "@/server/repositories/verification";
+import { checkOpenSanctions } from "@/server/services/opensanctions";
+import { queryKnowledgeBase } from "@/server/services/rag/ragService";
 import {
   appendMessage,
   getInvestigation,
@@ -74,6 +76,46 @@ export async function runInvestigationTurn(input: TurnInput): Promise<TurnOutput
     explicitFunding: input.explicitFunding ?? record.context.funding_type ?? null,
     evidenceCount,
   });
+
+  // OpenSanctions screening on consultant or agency entity
+  const agentCandidate = assessment.extracted.agent ?? facts.agentHint ?? null;
+  if (agentCandidate && agentCandidate.length > 2) {
+    try {
+      const sanctionsRes = await checkOpenSanctions(agentCandidate);
+      if (sanctionsRes.hasMatch) {
+        assessment.result.risk_signals.unshift({
+          category: "agent",
+          severity: sanctionsRes.highestRisk === "sanctioned" ? "high" : "medium",
+          title:
+            sanctionsRes.highestRisk === "sanctioned"
+              ? "Global Watchlist / Sanctions Match"
+              : "Regulatory Enforcement Warning",
+          explanation: sanctionsRes.summary,
+        });
+        if (sanctionsRes.highestRisk === "sanctioned") {
+          assessment.result.overall_risk = "high";
+        }
+      }
+    } catch {
+      // Non-blocking
+    }
+  }
+
+  // RAG Knowledge Base official policy retrieval & citation
+  try {
+    const ragResult = await queryKnowledgeBase(corpus, { topK: 2, minScore: 0.15 });
+    for (const item of ragResult.results) {
+      if (!assessment.result.official_sources.some((s) => s.title === item.title)) {
+        assessment.result.official_sources.push({
+          title: item.title,
+          url: "https://www.hec.gov.pk",
+          source: "government",
+        });
+      }
+    }
+  } catch {
+    // Non-blocking
+  }
 
   const replyText = await maybeEnrichReply({
     systemGoal:

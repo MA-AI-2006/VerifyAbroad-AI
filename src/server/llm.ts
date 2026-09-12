@@ -1,6 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 
 import type { InvestigationResult } from "@/types";
+export { geminiSearchGrounding, verifyWithGoogleSearch } from "@/server/services/geminiSearch";
 
 /**
  * Optional server-side LLM enrichment.
@@ -67,6 +68,7 @@ export async function maybeEnrichReply(input: EnrichInput): Promise<string> {
         config: {
           systemInstruction: input.systemGoal,
           temperature: 0.3,
+          tools: [{ googleSearch: {} }],
         },
       });
 
