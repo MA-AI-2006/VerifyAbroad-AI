@@ -208,6 +208,19 @@ export const api = {
     return request<{ ok: boolean }>("/auth/logout", { method: "POST" });
   },
 
+  getCurrentAccount() {
+    return request<{
+      account: {
+        name: string | null;
+        email: string | null;
+        preferred_language?: Language;
+        degree_level?: DegreeLevel | null;
+        target_countries?: string[];
+        funding_preference?: string | null;
+      } | null;
+    }>("/auth/me");
+  },
+
   getEmergencyProtocols() {
     return request<{
       emergency: {

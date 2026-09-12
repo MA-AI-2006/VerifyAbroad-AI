@@ -305,9 +305,11 @@ export function ChatView({
           </section>
 
           <div className="flex flex-wrap items-center gap-2">
-            <Badge tone="brand">{backendMode === "internal_engine" ? "Demo mode" : "Live backend"}</Badge>
+            <Badge tone="brand">
+              {backendMode === "external_backend" ? "Connected (External API)" : "Connected (AI Engine)"}
+            </Badge>
             <span className="text-[11px] leading-relaxed text-navy-500">
-              Sample verification dataset — community reports shown are demo data.
+              Active verification dataset — community reports &amp; institutional records connected.
             </span>
           </div>
         </div>

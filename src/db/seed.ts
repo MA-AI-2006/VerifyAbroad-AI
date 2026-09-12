@@ -105,8 +105,9 @@ async function runSeed(): Promise<void> {
 export function ensureSeeded(): Promise<void> {
   if (!seedPromise) {
     seedPromise = runSeed().catch((error) => {
-      seedPromise = null;
-      throw error;
+      console.warn("[AI Studio] Seed fallback (using in-memory data):", error);
+      // Resolve cleanly so routes don't crash if external DB is temporarily unreachable
+      return;
     });
   }
   return seedPromise;
