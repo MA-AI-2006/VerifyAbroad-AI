@@ -1,0 +1,6 @@
+{
+  "name": "VerifyAbroad AI",
+  "description": "AI-powered study-abroad safety assistant for Pakistani students to investigate universities, scholarships, consultants, and payment requests.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

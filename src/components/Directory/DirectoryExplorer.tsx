@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ExternalLink, Search } from "lucide-react";
+import Link from "next/link";
+import { ExternalLink, Search, Sparkles } from "lucide-react";
 
 import { cn } from "@/utils/ui";
 
@@ -224,22 +225,28 @@ export function DirectoryExplorer({
                   <p className="mt-3 text-[11px] leading-relaxed text-ink-500">{item.note}</p>
                 ) : null}
 
-                {item.links.length > 0 ? (
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {item.links.map((link) => (
-                      <a
-                        key={link.url}
-                        href={link.url}
-                        target="_blank"
-                        rel="noopener noreferrer nofollow"
-                        className="inline-flex items-center gap-1.5 rounded-xl border border-white bg-white px-3 py-1.5 text-[11px] font-bold text-ink-800 transition-colors hover:border-brand-200 hover:bg-brand-50"
-                      >
-                        {link.label}
-                        <ExternalLink className="size-3" aria-hidden="true" />
-                      </a>
-                    ))}
-                  </div>
-                ) : null}
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  <Link
+                    href={`/investigate?q=${encodeURIComponent(item.title)}`}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-brand-600 to-powder-600 px-3 py-1.5 text-[11px] font-bold text-white shadow-[0_10px_20px_-10px_rgba(70,99,214,0.8)] transition-transform hover:-translate-y-0.5 active:translate-y-0"
+                  >
+                    <Sparkles className="size-3 text-amber-200" aria-hidden="true" />
+                    Investigate with AI
+                  </Link>
+
+                  {item.links.map((link) => (
+                    <a
+                      key={link.url}
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer nofollow"
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-white bg-white px-3 py-1.5 text-[11px] font-bold text-ink-800 transition-colors hover:border-brand-200 hover:bg-brand-50"
+                    >
+                      {link.label}
+                      <ExternalLink className="size-3" aria-hidden="true" />
+                    </a>
+                  ))}
+                </div>
               </div>
             </li>
           ))}

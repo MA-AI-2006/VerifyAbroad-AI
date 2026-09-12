@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight, BookOpenCheck, Check, Compass, ShieldCheck, Sparkles } from "lucide-react";
 
 import { cn } from "@/utils/ui";
 
@@ -182,161 +182,408 @@ interface Destination {
   name: string;
   levels: string;
   funding: string;
+  keyVerification: string;
+  popularExamples: string;
   x: number;
   y: number;
   tone: string;
+  route: string;
 }
 
 const DESTINATIONS: Destination[] = [
-  { code: "PK", flag: "🇵🇰", name: "Pakistan", levels: "Home", funding: "Start here", x: 66, y: 55, tone: "#0a9670" },
-  { code: "GB", flag: "🇬🇧", name: "United Kingdom", levels: "BS • MS • PhD", funding: "Scholarships • Self funded", x: 45, y: 30, tone: "#5f83ef" },
-  { code: "DE", flag: "🇩🇪", name: "Germany", levels: "BS • MS • PhD", funding: "DAAD • University funding", x: 52, y: 31, tone: "#f0a03c" },
-  { code: "CA", flag: "🇨🇦", name: "Canada", levels: "BS • MS • PhD", funding: "Partial funding • Self funded", x: 20, y: 32, tone: "#e0524d" },
-  { code: "AU", flag: "🇦🇺", name: "Australia", levels: "BS • MS • PhD", funding: "Australia Awards", x: 82, y: 72, tone: "#12b388" },
-  { code: "TR", flag: "🇹🇷", name: "Türkiye", levels: "BS • MS • PhD", funding: "Türkiye Scholarships", x: 58, y: 43, tone: "#8b6ef2" },
-];
-
-const ROUTES = [
-  "M66 55 C 58 44, 50 38, 45 30",
-  "M66 55 C 62 44, 56 36, 52 31",
-  "M66 55 C 48 48, 32 40, 20 32",
-  "M66 55 C 74 62, 79 66, 82 72",
-  "M66 55 C 63 51, 60 47, 58 43",
+  {
+    code: "DE",
+    flag: "🇩🇪",
+    name: "Germany",
+    levels: "BS • MS • PhD",
+    funding: "Scholarships • University Funding • Self Funded",
+    popularExamples: "DAAD Scholarships, Deutschlandstipendium, Tuition-free public university degrees",
+    keyVerification: "Direct uni-assist admissions, APS certificate validation, Sperrkonto (Blocked account) deposit safeguards",
+    x: 580,
+    y: 200,
+    tone: "#f59e0b",
+    route: "M 230 310 C 310 220, 460 175, 580 200",
+  },
+  {
+    code: "UK",
+    flag: "🇬🇧",
+    name: "UK",
+    levels: "BS • MS • PhD",
+    funding: "Scholarships • University Funding • Self Funded",
+    popularExamples: "Chevening, Commonwealth, GREAT Scholarships, University merit discount waivers",
+    keyVerification: "CAS letter authenticity, UKVI Tier-4 licensed sponsor checks, verifying Pakistani consultants on university agent lists",
+    x: 480,
+    y: 135,
+    tone: "#3b82f6",
+    route: "M 230 310 C 270 175, 380 115, 480 135",
+  },
+  {
+    code: "CA",
+    flag: "🇨🇦",
+    name: "Canada",
+    levels: "BS • MS • PhD",
+    funding: "Scholarships • University Funding • Self Funded",
+    popularExamples: "Vanier Canada Graduate, Institutional Entrance Awards, Research Assistantships (RA/TA)",
+    keyVerification: "DLI (Designated Learning Institution) registration, Provincial Attestation Letter (PAL) quota verification, fee escrow safety",
+    x: 380,
+    y: 105,
+    tone: "#ef4444",
+    route: "M 230 310 C 240 150, 300 95, 380 105",
+  },
+  {
+    code: "AU",
+    flag: "🇦🇺",
+    name: "Australia",
+    levels: "BS • MS • PhD",
+    funding: "Scholarships • University Funding • Self Funded",
+    popularExamples: "Australia Awards, Destination Australia, Research Training Program (RTP)",
+    keyVerification: "CRICOS course registry verification, Genuine Student (GS) compliance, official university direct wire payment channels",
+    x: 670,
+    y: 345,
+    tone: "#10b981",
+    route: "M 230 310 C 350 335, 520 375, 670 345",
+  },
+  {
+    code: "TR",
+    flag: "🇹🇷",
+    name: "Türkiye",
+    levels: "BS • MS • PhD",
+    funding: "Scholarships • University Funding • Self Funded",
+    popularExamples: "Türkiye Bursları (Full government scholarship + stipend), YTB support, University tuition waivers",
+    keyVerification: "Official Türkiye Bursları portal verification, YÖK accreditation check, avoiding middlemen who charge for free scholarship forms",
+    x: 450,
+    y: 245,
+    tone: "#8b5cf6",
+    route: "M 230 310 C 280 265, 365 240, 450 245",
+  },
 ];
 
 export function WorldJourney() {
-  const [active, setActive] = useState<string | null>(null);
-  const activeDestination = DESTINATIONS.find((item) => item.code === active) ?? null;
+  const [active, setActive] = useState<string>("DE");
+  const activeDestination = DESTINATIONS.find((item) => item.code === active) ?? DESTINATIONS[0];
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[1.25fr_1fr] lg:items-center">
-      <div className="relative overflow-hidden rounded-[36px] border border-white bg-white/70 p-4 shadow-[0_30px_70px_-50px_rgba(34,48,74,0.6)] sm:p-6">
-        <div className="relative aspect-[16/10] w-full">
+    <div className="grid gap-8 lg:grid-cols-[1.28fr_1fr] lg:items-center">
+      {/* Visual Storytelling Element: Artistic World Map */}
+      <div className="relative overflow-hidden rounded-[36px] border border-white bg-white/75 p-3 sm:p-5 shadow-[0_30px_70px_-50px_rgba(34,48,74,0.45)] backdrop-blur-md">
+        <div className="relative aspect-[16/10] w-full select-none">
           <svg
-            viewBox="0 0 100 64"
+            viewBox="0 0 800 480"
             className="absolute inset-0 size-full"
             role="img"
-            aria-label="Illustrated world map with study routes from Pakistan to the UK, Germany, Canada, Australia and Türkiye"
+            aria-label="Artistic visual world map showing study-abroad routes from Pakistan to UK, Germany, Canada, Australia and Türkiye"
           >
-            {/* abstract continents */}
-            <g fill="#e5efff" stroke="#c9e0ff" strokeWidth="0.3">
-              <ellipse cx="18" cy="26" rx="12" ry="9" />
-              <ellipse cx="26" cy="48" rx="7" ry="10" />
-              <ellipse cx="46" cy="24" rx="9" ry="7" />
-              <ellipse cx="50" cy="46" rx="7" ry="9" />
-              <ellipse cx="70" cy="52" rx="13" ry="7" />
-              <ellipse cx="78" cy="24" rx="9" ry="6" />
-              <ellipse cx="86" cy="66" rx="8" ry="5" />
-            </g>
-            <g fill="#f8f5ff" stroke="#ded4ff" strokeWidth="0.3">
-              <ellipse cx="60" cy="20" rx="16" ry="8" />
+            <defs>
+              <linearGradient id="artBgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#f8faff" />
+                <stop offset="50%" stopColor="#f0f5fc" />
+                <stop offset="100%" stopColor="#eaf1fb" />
+              </linearGradient>
+
+              <radialGradient id="worldAura" cx="50%" cy="48%" r="60%">
+                <stop offset="0%" stopColor="#ffffff" stopOpacity="0.9" />
+                <stop offset="60%" stopColor="#f0f6ff" stopOpacity="0.6" />
+                <stop offset="100%" stopColor="#e2ecfb" stopOpacity="0.1" />
+              </radialGradient>
+
+              <filter id="routeGlow" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="3" result="blur" />
+                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+              </filter>
+            </defs>
+
+            {/* Background canvas */}
+            <rect width="800" height="480" rx="28" fill="url(#artBgGrad)" />
+            <ellipse cx="430" cy="240" rx="360" ry="200" fill="url(#worldAura)" />
+
+            {/* Artistic cartographic longitude and latitude grid lines */}
+            <g stroke="#dce7f5" strokeWidth="1" strokeDasharray="4 6" fill="none" opacity="0.65">
+              <path d="M 60 150 Q 400 115 740 150" />
+              <path d="M 40 240 Q 400 215 760 240" />
+              <path d="M 60 330 Q 400 310 740 330" />
+              <path d="M 230 40 Q 205 240 230 440" />
+              <path d="M 410 30 Q 410 240 410 450" />
+              <path d="M 590 40 Q 615 240 590 440" />
             </g>
 
-            {/* routes */}
-            {ROUTES.map((route, index) => (
-              <path
-                key={route}
-                d={route}
-                fill="none"
-                stroke={DESTINATIONS[index + 1]?.tone ?? "#5f83ef"}
-                strokeWidth="0.6"
-                strokeLinecap="round"
-                strokeDasharray="2 2"
-                className="dash-run"
-                opacity="0.85"
-              />
-            ))}
+            {/* Stylized artistic continent silhouettes */}
+            <g fill="#e3effc" stroke="#ccdef9" strokeWidth="1.2" opacity="0.85">
+              {/* North America / Canada */}
+              <path d="M 120 70 Q 210 50 280 65 Q 370 80 340 120 Q 280 155 240 150 Q 210 190 170 180 Q 140 140 120 70 Z" />
+              {/* South America */}
+              <path d="M 190 220 Q 235 230 245 280 Q 235 360 195 390 Q 170 340 165 270 Z" />
+              {/* Europe */}
+              <path d="M 420 85 Q 490 65 550 80 Q 570 125 530 160 Q 450 160 420 125 Z" />
+              {/* Africa */}
+              <path d="M 410 180 Q 495 185 510 240 Q 505 320 460 380 Q 415 340 395 260 Z" />
+              {/* Asia & Eurasia */}
+              <path d="M 510 75 Q 640 60 720 100 Q 750 180 680 245 Q 580 255 520 195 Z" />
+              {/* Australia */}
+              <path d="M 625 315 Q 700 300 730 330 Q 720 385 660 390 Q 620 370 625 315 Z" />
+            </g>
 
-            {/* markers */}
-            {DESTINATIONS.map((destination) => (
-              <g
-                key={destination.code}
-                transform={`translate(${destination.x} ${destination.y * 0.64})`}
-                onMouseEnter={() => setActive(destination.code)}
-                onFocus={() => setActive(destination.code)}
-                onMouseLeave={() => setActive((current) => (current === destination.code ? null : current))}
-                onBlur={() => setActive((current) => (current === destination.code ? null : current))}
-                tabIndex={0}
-                role="button"
-                aria-label={`${destination.name}: ${destination.levels}`}
-                className="cursor-pointer outline-none"
-              >
-                <circle r="2.6" fill={destination.tone} opacity="0.25" />
-                <circle r="1.5" fill={destination.tone} />
-                <circle r="1.5" fill={destination.tone} className="ping-soft" />
-                <text y="-3" textAnchor="middle" fontSize="2.6" fill="#2f3d5c" fontWeight="700">
-                  {destination.name}
+            {/* Concentric journey distance rings from Pakistan */}
+            <g stroke="#93c5fd" strokeWidth="0.9" strokeDasharray="3 6" fill="none">
+              <circle cx="230" cy="310" r="110" opacity="0.4" />
+              <circle cx="230" cy="310" r="230" opacity="0.28" />
+              <circle cx="230" cy="310" r="360" opacity="0.18" />
+            </g>
+
+            {/* Animated curved routes from Pakistan */}
+            {DESTINATIONS.map((dest) => {
+              const isSelected = active === dest.code;
+              return (
+                <g key={`route-${dest.code}`}>
+                  {/* Subtle background track */}
+                  <path
+                    d={dest.route}
+                    fill="none"
+                    stroke={isSelected ? dest.tone : "#a3b8d6"}
+                    strokeWidth={isSelected ? "3" : "1.6"}
+                    strokeDasharray="4 4"
+                    strokeLinecap="round"
+                    className={cn(
+                      "transition-all duration-300",
+                      isSelected ? "dash-run opacity-100" : "opacity-40",
+                    )}
+                  />
+                  {/* Glowing halo for active route */}
+                  {isSelected && (
+                    <path
+                      d={dest.route}
+                      fill="none"
+                      stroke={dest.tone}
+                      strokeWidth="7"
+                      strokeLinecap="round"
+                      opacity="0.22"
+                      filter="url(#routeGlow)"
+                    />
+                  )}
+                </g>
+              );
+            })}
+
+            {/* Origin Hub: Pakistan */}
+            <g transform="translate(230, 310)">
+              {/* Pulsing beacon */}
+              <circle r="22" fill="#10b981" opacity="0.15" className="ping-soft" />
+              <circle r="12" fill="#10b981" opacity="0.3" />
+              <circle r="7" fill="#047857" />
+              <circle r="2.8" fill="#ffffff" />
+
+              {/* Hub Label */}
+              <g transform="translate(0, 24)">
+                <rect
+                  x="-42"
+                  y="-12"
+                  width="84"
+                  height="22"
+                  rx="11"
+                  fill="#047857"
+                  className="shadow-sm"
+                />
+                <text
+                  textAnchor="middle"
+                  y="3"
+                  fontSize="11"
+                  fontWeight="800"
+                  fill="#ffffff"
+                  className="select-none"
+                >
+                  🇵🇰 Pakistan
                 </text>
               </g>
-            ))}
+            </g>
+
+            {/* Destination Nodes */}
+            {DESTINATIONS.map((dest) => {
+              const isSelected = active === dest.code;
+              return (
+                <g
+                  key={dest.code}
+                  transform={`translate(${dest.x}, ${dest.y})`}
+                  className="cursor-pointer outline-none transition-transform duration-200 hover:scale-105"
+                  tabIndex={0}
+                  role="button"
+                  aria-label={`Select ${dest.name}`}
+                  onMouseEnter={() => setActive(dest.code)}
+                  onFocus={() => setActive(dest.code)}
+                  onClick={() => setActive(dest.code)}
+                >
+                  {/* Active highlight glow */}
+                  {isSelected && (
+                    <circle r="24" fill={dest.tone} opacity="0.25" className="ping-soft" />
+                  )}
+
+                  {/* Node outer badge */}
+                  <circle
+                    r={isSelected ? "15" : "12"}
+                    fill="#ffffff"
+                    stroke={dest.tone}
+                    strokeWidth={isSelected ? "2.5" : "1.8"}
+                    className="shadow-md transition-all"
+                  />
+                  {/* Node inner pill */}
+                  <circle
+                    r={isSelected ? "11" : "8.5"}
+                    fill={dest.tone}
+                    className="transition-all"
+                  />
+                  {/* Two-letter code */}
+                  <text
+                    textAnchor="middle"
+                    dy="3.5"
+                    fontSize={isSelected ? "10" : "8.5"}
+                    fontWeight="800"
+                    fill="#ffffff"
+                    className="select-none pointer-events-none"
+                  >
+                    {dest.code}
+                  </text>
+
+                  {/* Floating Pill with Flag & Name */}
+                  <g transform="translate(0, -22)">
+                    <rect
+                      x={-dest.name.length * 4.2 - 14}
+                      y="-11"
+                      width={dest.name.length * 8.4 + 28}
+                      height="20"
+                      rx="10"
+                      fill={isSelected ? "#0f172a" : "rgba(255, 255, 255, 0.96)"}
+                      stroke={isSelected ? "#0f172a" : "#dbeafe"}
+                      strokeWidth="1"
+                      className="shadow-xs transition-colors"
+                    />
+                    <text
+                      textAnchor="middle"
+                      y="3"
+                      fontSize="10.5"
+                      fontWeight={isSelected ? "700" : "600"}
+                      fill={isSelected ? "#ffffff" : "#1e293b"}
+                      className="select-none pointer-events-none"
+                    >
+                      {dest.flag} {dest.name}
+                    </text>
+                  </g>
+                </g>
+              );
+            })}
           </svg>
         </div>
-        <p className="mt-2 text-center text-[11px] text-ink-500">
-          Illustrative storytelling map — hover or tap a destination to see what students usually
-          verify first.
-        </p>
+
+        <div className="mt-3 flex items-center justify-between px-2 text-[11px] text-ink-500">
+          <span>Artistic storytelling map · Animated departure routes</span>
+          <span className="hidden sm:inline">Hover or tap any destination</span>
+        </div>
       </div>
 
-      <div className="space-y-3">
-        <div className="flex flex-wrap gap-2">
-          {DESTINATIONS.slice(1).map((destination) => (
-            <button
-              key={destination.code}
-              type="button"
-              onMouseEnter={() => setActive(destination.code)}
-              onClick={() => setActive(destination.code)}
-              className={cn(
-                "flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition-all",
-                active === destination.code
-                  ? "border-brand-300 bg-white text-ink-900 shadow-[0_10px_24px_-18px_rgba(34,48,74,0.6)]"
-                  : "border-white bg-white/70 text-ink-600 hover:bg-white",
-              )}
-            >
-              <span aria-hidden="true">{destination.flag}</span>
-              {destination.name}
-            </button>
-          ))}
+      {/* Destination Controls & Storytelling Country Card */}
+      <div className="space-y-4">
+        {/* Quick-select pills */}
+        <div className="flex flex-wrap items-center gap-2">
+          {DESTINATIONS.map((dest) => {
+            const isSelected = active === dest.code;
+            return (
+              <button
+                key={dest.code}
+                type="button"
+                onMouseEnter={() => setActive(dest.code)}
+                onClick={() => setActive(dest.code)}
+                className={cn(
+                  "flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs font-bold transition-all",
+                  isSelected
+                    ? "border-brand-400 bg-white text-ink-900 shadow-md ring-2 ring-brand-100"
+                    : "border-white/80 bg-white/70 text-ink-600 hover:bg-white hover:text-ink-900",
+                )}
+              >
+                <span aria-hidden="true">{dest.flag}</span>
+                <span>{dest.name}</span>
+              </button>
+            );
+          })}
         </div>
 
-        <div className="grad-panel rounded-[32px] border border-white p-6 ring-soft">
-          {activeDestination ? (
-            <div className="pop-in space-y-3">
-              <div className="flex items-center gap-3">
-                <span className="text-3xl" aria-hidden="true">
-                  {activeDestination.flag}
-                </span>
-                <div>
-                  <p className="text-lg font-bold tracking-tight text-ink-900">{activeDestination.name}</p>
-                  <p className="text-xs font-semibold text-ink-500">Popular study levels</p>
-                </div>
-              </div>
-              <p className="text-sm font-semibold text-brand-700">{activeDestination.levels}</p>
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-wide text-ink-400">Funding</p>
-                <p className="mt-0.5 text-sm text-ink-700">{activeDestination.funding}</p>
-              </div>
-              <Link
-                href="/investigate"
-                className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-brand-500 to-powder-600 px-4 py-2.5 text-sm font-bold text-white shadow-[0_14px_28px_-16px_rgba(70,99,214,0.9)] transition-transform hover:-translate-y-0.5"
-              >
-                Start an investigation
-                <ArrowRight className="size-4" aria-hidden="true" />
-              </Link>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <span className="grid size-11 place-items-center rounded-2xl bg-white/80 text-brand-600">
-                <Sparkles className="size-5" aria-hidden="true" />
+        {/* Requested Country Card */}
+        <div
+          key={activeDestination.code}
+          className="pop-in rounded-[30px] border border-white/90 bg-white/85 p-6 shadow-[0_24px_50px_-24px_rgba(34,48,74,0.2)] backdrop-blur-md sm:p-7"
+        >
+          {/* Country Header */}
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="text-4xl sm:text-5xl" aria-hidden="true">
+                {activeDestination.flag}
               </span>
-              <p className="text-base font-bold tracking-tight text-ink-900">
-                Pick a destination to preview the questions
-              </p>
-              <p className="text-sm leading-relaxed text-ink-600">
-                Every route raises different things to verify: funding letters, application portals,
-                consultancy claims and payment routes.
-              </p>
+              <div>
+                <h3 className="text-2xl font-black tracking-tight text-ink-900">
+                  {activeDestination.name}
+                </h3>
+                <p className="text-xs font-semibold text-ink-500">
+                  Study abroad destination
+                </p>
+              </div>
             </div>
-          )}
+            <span
+              className="rounded-full px-3 py-1 text-xs font-extrabold"
+              style={{
+                backgroundColor: `${activeDestination.tone}15`,
+                color: activeDestination.tone,
+              }}
+            >
+              {activeDestination.code}
+            </span>
+          </div>
+
+          {/* Popular study levels */}
+          <div className="mt-5 rounded-2xl border border-powder-100 bg-powder-50/60 p-4">
+            <p className="text-xs font-bold uppercase tracking-wider text-ink-500">
+              Popular study levels:
+            </p>
+            <p className="mt-1.5 text-base font-extrabold tracking-wide text-ink-900">
+              {activeDestination.levels}
+            </p>
+          </div>
+
+          {/* Funding */}
+          <div className="mt-3.5 rounded-2xl border border-brand-100 bg-brand-50/40 p-4">
+            <p className="text-xs font-bold uppercase tracking-wider text-ink-500">
+              Funding:
+            </p>
+            <p className="mt-1.5 text-base font-extrabold text-brand-800">
+              {activeDestination.funding}
+            </p>
+            <p className="mt-1.5 text-xs leading-relaxed text-ink-600">
+              {activeDestination.popularExamples}
+            </p>
+          </div>
+
+          {/* Key Verification Check for Pakistani Applicants */}
+          <div className="mt-3.5 rounded-2xl border border-slate-100 bg-slate-50/80 p-3.5">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-ink-400">
+              Key things to verify:
+            </p>
+            <p className="mt-1 text-xs font-medium leading-relaxed text-ink-700">
+              {activeDestination.keyVerification}
+            </p>
+          </div>
+
+          {/* Primary Action Button */}
+          <div className="mt-6 flex flex-col gap-2.5 sm:flex-row">
+            <Link
+              href="/guides"
+              className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-brand-600 to-powder-600 px-5 py-3 text-sm font-bold text-white shadow-[0_16px_32px_-16px_rgba(70,99,214,0.85)] transition-transform hover:-translate-y-0.5 active:translate-y-0"
+            >
+              <BookOpenCheck className="size-4" aria-hidden="true" />
+              Explore Safety Guide
+            </Link>
+            <Link
+              href={`/investigate?q=${encodeURIComponent(activeDestination.name)}`}
+              className="inline-flex items-center justify-center gap-1.5 rounded-2xl border border-ink-200 bg-white px-4 py-3 text-sm font-semibold text-ink-700 transition-colors hover:bg-ink-50"
+            >
+              Verify Offer
+              <ArrowRight className="size-3.5" aria-hidden="true" />
+            </Link>
+          </div>
         </div>
       </div>
     </div>

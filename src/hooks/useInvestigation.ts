@@ -66,11 +66,34 @@ export function useInvestigation(initial?: {
   );
   const idRef = useRef<string | null>(initial?.investigation?.id ?? null);
 
+  const [prevInitialId, setPrevInitialId] = useState(initial?.investigation?.id ?? null);
+  if (initial?.investigation && initial.investigation.id !== prevInitialId) {
+    setPrevInitialId(initial.investigation.id);
+    setInvestigationId(initial.investigation.id);
+    setMessages(initial.investigation.messages);
+    setDegreeLevel(initial.investigation.context.degree_level ?? null);
+    setFundingType(initial.investigation.context.funding_type ?? null);
+  }
+
+  useEffect(() => {
+    idRef.current = investigationId;
+  }, [investigationId]);
+
   const pushAssistantTurn = useCallback((turn: {
+    studentMessage?: ChatMessage;
     assistantMessage: ChatMessage;
     result: InvestigationResult | null;
   }) => {
-    setMessages((current) => [...current, turn.assistantMessage]);
+    setMessages((current) => {
+      const next = [...current];
+      if (turn.studentMessage && !next.some((m) => m.id === turn.studentMessage?.id)) {
+        next.push(turn.studentMessage);
+      }
+      if (!next.some((m) => m.id === turn.assistantMessage.id)) {
+        next.push(turn.assistantMessage);
+      }
+      return next;
+    });
   }, []);
 
   const ensureInvestigation = useCallback(async (): Promise<string> => {
@@ -78,6 +101,9 @@ export function useInvestigation(initial?: {
     const response = await api.startInvestigation({ language });
     idRef.current = response.investigation_id;
     setInvestigationId(response.investigation_id);
+    if (typeof window !== "undefined" && window.history) {
+      window.history.replaceState(null, "", `/investigate?id=${response.investigation_id}`);
+    }
     setMessages(response.investigation?.messages ?? []);
     return response.investigation_id;
   }, [language]);
@@ -110,11 +136,17 @@ export function useInvestigation(initial?: {
           });
           idRef.current = response.investigation_id;
           setInvestigationId(response.investigation_id);
+          if (typeof window !== "undefined" && window.history) {
+            window.history.replaceState(null, "", `/investigate?id=${response.investigation_id}`);
+          }
           // Replace the optimistic transcript with the server-rendered one
-          // (welcome message + the student's first message), then add the turn.
           const existing = response.investigation?.messages ?? [];
-          setMessages(existing.length > 0 ? existing : [optimistic]);
-          if (response.first_turn) pushAssistantTurn(response.first_turn);
+          if (existing.length > 0) {
+            setMessages(existing);
+          } else {
+            setMessages([optimistic]);
+            if (response.first_turn) pushAssistantTurn(response.first_turn);
+          }
         } else {
           const response = await api.sendMessage(idRef.current, {
             message: trimmed,
@@ -129,7 +161,6 @@ export function useInvestigation(initial?: {
         setAttachments(sentAttachments);
       } finally {
         setIsThinking(false);
-        setPendingSteps(null);
       }
     },
     [attachments, degreeLevel, fundingType, language, pushAssistantTurn],
@@ -157,7 +188,6 @@ export function useInvestigation(initial?: {
         setError(cause instanceof Error ? cause.message : "Could not upload that file.");
       } finally {
         setIsThinking(false);
-        setPendingSteps(null);
       }
     },
     [ensureInvestigation],
@@ -190,7 +220,6 @@ export function useInvestigation(initial?: {
         setError(cause instanceof Error ? cause.message : "Could not submit that message.");
       } finally {
         setIsThinking(false);
-        setPendingSteps(null);
       }
     },
     [ensureInvestigation],
@@ -223,7 +252,6 @@ export function useInvestigation(initial?: {
         setError(cause instanceof Error ? cause.message : "Could not submit that link.");
       } finally {
         setIsThinking(false);
-        setPendingSteps(null);
       }
     },
     [ensureInvestigation],
@@ -251,14 +279,19 @@ export function useInvestigation(initial?: {
       });
       idRef.current = response.investigation_id;
       setInvestigationId(response.investigation_id);
+      if (typeof window !== "undefined" && window.history) {
+        window.history.replaceState(null, "", `/investigate?id=${response.investigation_id}`);
+      }
       const transcript = response.investigation?.messages ?? [];
-      setMessages(transcript);
-      if (response.first_turn) pushAssistantTurn(response.first_turn);
+      if (transcript.length > 0) {
+        setMessages(transcript);
+      } else if (response.first_turn) {
+        pushAssistantTurn(response.first_turn);
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not load the demo case.");
     } finally {
       setIsThinking(false);
-      setPendingSteps(null);
     }
   }, [pushAssistantTurn]);
 
@@ -272,11 +305,13 @@ export function useInvestigation(initial?: {
       setMessages(response.investigation.messages);
       setDegreeLevel(response.investigation.context.degree_level ?? null);
       setFundingType(response.investigation.context.funding_type ?? null);
+      if (typeof window !== "undefined" && window.history) {
+        window.history.replaceState(null, "", `/investigate?id=${response.investigation.id}`);
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not open that investigation.");
     } finally {
       setIsThinking(false);
-      setPendingSteps(null);
     }
   }, []);
 
@@ -285,7 +320,11 @@ export function useInvestigation(initial?: {
     setInvestigationId(null);
     setMessages([]);
     setAttachments([]);
+    setPendingSteps(null);
     setError(null);
+    if (typeof window !== "undefined" && window.history) {
+      window.history.replaceState(null, "", "/investigate");
+    }
   }, []);
 
   const latestResult = useMemo(() => {
@@ -302,7 +341,7 @@ export function useInvestigation(initial?: {
     isThinking,
     error,
     attachments,
-    pendingSteps,
+    pendingSteps: isThinking ? pendingSteps : null,
     latestResult,
     language,
     degreeLevel,

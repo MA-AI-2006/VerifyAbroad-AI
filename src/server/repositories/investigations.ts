@@ -154,6 +154,15 @@ export async function createInvestigation(input: CreateInvestigationInput) {
   return inserted[0];
 }
 
+function toIso(val: any): string {
+  if (val instanceof Date && !isNaN(val.getTime())) return val.toISOString();
+  if (typeof val === "string" || typeof val === "number") {
+    const d = new Date(val);
+    if (!isNaN(d.getTime())) return d.toISOString();
+  }
+  return new Date().toISOString();
+}
+
 export async function getInvestigationRow(id: number) {
   const rows = await db.select().from(investigations).where(eq(investigations.id, id)).limit(1);
   return rows[0] ?? null;
@@ -186,7 +195,7 @@ export async function getInvestigation(id: number): Promise<InvestigationRecord 
     id: String(message.id),
     role: message.role as ChatMessage["role"],
     text: message.text,
-    created_at: message.createdAt.toISOString(),
+    created_at: toIso(message.createdAt),
     attachments:
       ((message.attachments ?? []) as ChatAttachmentRow[]).map((a) => ({
         id: a.id,
@@ -200,9 +209,6 @@ export async function getInvestigation(id: number): Promise<InvestigationRecord 
       })) ?? [],
     result: (message.result as InvestigationResult | null) ?? null,
   }));
-
-  // Attachments already live on the message they were sent with, so evidence is
-  // never duplicated onto the latest student message.
 
   return {
     id: String(row.id),
@@ -222,8 +228,8 @@ export async function getInvestigation(id: number): Promise<InvestigationRecord 
     },
     messages,
     latest_result: (row.latestResult as InvestigationResult | null) ?? null,
-    created_at: row.createdAt.toISOString(),
-    updated_at: row.updatedAt.toISOString(),
+    created_at: toIso(row.createdAt),
+    updated_at: toIso(row.updatedAt),
   };
 }
 
@@ -257,8 +263,8 @@ export async function listInvestigations(
     overall_risk: row.overallRisk as RiskLevel,
     summary: row.summary,
     status: row.status as InvestigationListItem["status"],
-    created_at: row.createdAt.toISOString(),
-    updated_at: row.updatedAt.toISOString(),
+    created_at: toIso(row.createdAt),
+    updated_at: toIso(row.updatedAt),
     message_count: counts[index] ?? 0,
   }));
 }
