@@ -100,12 +100,19 @@ async function computeEmbedding(text: string): Promise<number[] | null> {
   const embeddingModel = process.env.GEMINI_EMBEDDING_MODEL ?? "text-embedding-004";
 
   try {
-    const res = await ai.models.embedContent({
-      model: embeddingModel,
-      contents: text,
-    });
-    const values = (res as any).embeddings?.[0]?.values ?? (res as any).embedding?.values ?? null;
-    return values;
+    const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000));
+    const embedPromise = ai.models
+      .embedContent({
+        model: embeddingModel,
+        contents: text,
+      })
+      .then((res) => {
+        const values = (res as any).embeddings?.[0]?.values ?? (res as any).embedding?.values ?? null;
+        return values;
+      })
+      .catch(() => null);
+
+    return await Promise.race([embedPromise, timeoutPromise]);
   } catch {
     // Fallback: semantic vector generation not available
     return null;
