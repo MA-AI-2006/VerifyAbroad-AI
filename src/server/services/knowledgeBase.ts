@@ -1,5 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
-import pdfParse from "pdf-parse";
+import { PDFParse } from "pdf-parse";
 import type { KnowledgeCitation } from "@/types";
 
 /**
@@ -104,7 +104,8 @@ async function computeEmbedding(text: string): Promise<number[] | null> {
       model: embeddingModel,
       contents: text,
     });
-    return res.embedding?.values ?? null;
+    const values = (res as any).embeddings?.[0]?.values ?? (res as any).embedding?.values ?? null;
+    return values;
   } catch {
     // Fallback: semantic vector generation not available
     return null;
@@ -147,7 +148,6 @@ export async function ingestTextDocument(
 export async function extractTextFromPdf(buffer: Buffer): Promise<{ text: string; pages: number }> {
   const parser = new PDFParse({ data: buffer });
   try {
-    await parser.load();
     const textResult = await parser.getText();
     const info = (await parser.getInfo().catch(() => ({ pages: 1 }))) as any;
     const pages = info?.pages ?? (textResult ? 1 : 0);

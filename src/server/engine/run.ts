@@ -90,7 +90,7 @@ export async function runInvestigationTurn(input: TurnInput): Promise<TurnOutput
   }
 
   // 2. OpenSanctions screening on consultant / agent or company
-  const agentTarget = assessment.extracted.agent ?? record.context.agent ?? facts.agentName;
+  const agentTarget = assessment.extracted.agent ?? record.context.agent ?? facts.agentHint;
   if (agentTarget) {
     try {
       const sanctions = await screenAgainstSanctions(agentTarget);
