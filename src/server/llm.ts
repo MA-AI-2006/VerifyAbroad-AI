@@ -32,7 +32,12 @@ function getGenAi(): GoogleGenAI | null {
 }
 
 export function llmConfigured(): boolean {
-  return Boolean(process.env.GEMINI_API_KEY ?? process.env.GOOGLE_API_KEY ?? process.env.OPENAI_API_KEY);
+  return Boolean(
+    process.env.GEMINI_API_KEY ??
+      process.env.GOOGLE_API_KEY ??
+      process.env.GROQ_API_KEY ??
+      process.env.OPENAI_API_KEY,
+  );
 }
 
 interface EnrichInput {
@@ -55,8 +60,9 @@ export async function maybeEnrichReply(input: EnrichInput): Promise<string> {
         input.structured,
       )}\n\nDeterministic draft reply (rewrite for clarity, empathetic advisor tone, keep all facts, warning signals, verdicts, risk level and next verification step):\n${input.draft}`;
 
+      const modelName = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
       const generatePromise = ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: modelName,
         contents: prompt,
         config: {
           systemInstruction: input.systemGoal,
@@ -76,6 +82,44 @@ export async function maybeEnrichReply(input: EnrichInput): Promise<string> {
     } catch (cause) {
       console.warn("Gemini enrichment fallback:", cause instanceof Error ? cause.message : cause);
       // Fall through to other providers or deterministic draft
+    }
+  }
+
+  const groqKey = process.env.GROQ_API_KEY;
+  if (groqKey) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+      const groqModel = process.env.GROQ_MODEL ?? "llama-3.3-70b-versatile";
+      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${groqKey}`,
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          model: groqModel,
+          temperature: 0.3,
+          messages: [
+            { role: "system", content: input.systemGoal },
+            {
+              role: "user",
+              content: `Student message: ${input.studentText}\n\nStructured output (must not be contradicted): ${JSON.stringify(
+                input.structured,
+              )}\n\nRewrite this draft for clarity and empathetic advisor tone without changing any fact, verdict, risk level or next step:\n${input.draft}`,
+            },
+          ],
+        }),
+      });
+      clearTimeout(timer);
+      if (response.ok) {
+        const payload = (await response.json()) as { choices?: { message?: { content?: string } }[] };
+        const text = payload.choices?.[0]?.message?.content ?? "";
+        if (text.trim().length > 0) return text.trim();
+      }
+    } catch (cause) {
+      console.warn("Groq enrichment fallback:", cause instanceof Error ? cause.message : cause);
     }
   }
 
