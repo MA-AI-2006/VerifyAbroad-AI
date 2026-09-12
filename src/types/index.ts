@@ -156,6 +156,53 @@ export interface VerificationSummary {
   payment: PaymentVerdict;
 }
 
+export interface SanctionsHit {
+  id: string;
+  caption: string;
+  schema: string;
+  datasets: string[];
+  countries: string[];
+  score: number;
+  properties?: Record<string, string[]>;
+}
+
+export interface SanctionsFinding {
+  screened: boolean;
+  query: string | null;
+  match_count: number;
+  high_risk_matches: SanctionsHit[];
+  summary: string;
+}
+
+export interface LiveSearchResult {
+  title: string;
+  url: string;
+  snippet: string;
+  source: "tavily" | "gemini_google_search";
+}
+
+export interface LiveIntelligenceFinding {
+  searched: boolean;
+  query: string | null;
+  source: "tavily" | "gemini_grounding" | "multi_source" | "none";
+  summary: string;
+  results: LiveSearchResult[];
+}
+
+export interface KnowledgeCitation {
+  document_title: string;
+  source: string;
+  section?: string;
+  snippet: string;
+  relevance_score?: number;
+}
+
+export interface KnowledgeBaseFinding {
+  retrieved: boolean;
+  citations: KnowledgeCitation[];
+  grounding_summary: string;
+}
+
 /** Full structured investigation result returned by the backend. */
 export interface InvestigationResult {
   investigation_id: string;
@@ -180,6 +227,9 @@ export interface InvestigationResult {
   still_need: string[];
   progress: ProgressStep[];
   data_notes: string[];
+  sanctions_screening?: SanctionsFinding | null;
+  live_intelligence?: LiveIntelligenceFinding | null;
+  knowledge_citations?: KnowledgeCitation[];
   generated_at: string;
 }
 

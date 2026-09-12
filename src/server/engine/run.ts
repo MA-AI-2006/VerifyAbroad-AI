@@ -4,8 +4,10 @@ import { messagesToCorpus, runAssessment } from "@/server/engine/assess";
 import { t } from "@/server/engine/phrases";
 import { maybeEnrichReply } from "@/server/llm";
 import { loadVerificationData } from "@/server/repositories/verification";
-import { checkOpenSanctions } from "@/server/services/opensanctions";
-import { queryKnowledgeBase } from "@/server/services/rag/ragService";
+import { screenAgainstSanctions } from "@/server/services/opensanctions";
+import { investigateEntityWithTavily } from "@/server/services/tavily";
+import { searchWithGeminiGrounding } from "@/server/services/geminiSearch";
+import { queryKnowledgeBase } from "@/server/services/knowledgeBase";
 import {
   appendMessage,
   getInvestigation,
@@ -77,44 +79,65 @@ export async function runInvestigationTurn(input: TurnInput): Promise<TurnOutput
     evidenceCount,
   });
 
-  // OpenSanctions screening on consultant or agency entity
-  const agentCandidate = assessment.extracted.agent ?? facts.agentHint ?? null;
-  if (agentCandidate && agentCandidate.length > 2) {
+  // 1. Knowledge Base RAG retrieval
+  try {
+    const citations = await queryKnowledgeBase(corpus, 3);
+    if (citations.length > 0) {
+      assessment.result.knowledge_citations = citations;
+    }
+  } catch (err) {
+    console.warn("Knowledge base query failed:", err);
+  }
+
+  // 2. OpenSanctions screening on consultant / agent or company
+  const agentTarget = assessment.extracted.agent ?? record.context.agent ?? facts.agentName;
+  if (agentTarget) {
     try {
-      const sanctionsRes = await checkOpenSanctions(agentCandidate);
-      if (sanctionsRes.hasMatch) {
+      const sanctions = await screenAgainstSanctions(agentTarget);
+      assessment.result.sanctions_screening = sanctions;
+      if (sanctions.match_count > 0) {
+        assessment.result.overall_risk = "high";
         assessment.result.risk_signals.unshift({
           category: "agent",
-          severity: sanctionsRes.highestRisk === "sanctioned" ? "high" : "medium",
-          title:
-            sanctionsRes.highestRisk === "sanctioned"
-              ? "Global Watchlist / Sanctions Match"
-              : "Regulatory Enforcement Warning",
-          explanation: sanctionsRes.summary,
+          severity: "high",
+          title: "Regulatory Sanctions or Enforcement Match",
+          explanation: sanctions.summary,
         });
-        if (sanctionsRes.highestRisk === "sanctioned") {
-          assessment.result.overall_risk = "high";
-        }
       }
-    } catch {
-      // Non-blocking
+    } catch (err) {
+      console.warn("Sanctions screening failed:", err);
     }
   }
 
-  // RAG Knowledge Base official policy retrieval & citation
-  try {
-    const ragResult = await queryKnowledgeBase(corpus, { topK: 2, minScore: 0.15 });
-    for (const item of ragResult.results) {
-      if (!assessment.result.official_sources.some((s) => s.title === item.title)) {
-        assessment.result.official_sources.push({
-          title: item.title,
-          url: "https://www.hec.gov.pk",
-          source: "government",
-        });
+  // 3. Live Web Research (Tavily & Gemini Search Grounding)
+  const targetEntity =
+    agentTarget ||
+    assessment.extracted.university ||
+    record.context.university ||
+    assessment.extracted.scholarship;
+
+  if (targetEntity) {
+    try {
+      const category = agentTarget ? "agent" : assessment.extracted.university ? "university" : "general";
+      const liveIntel = await investigateEntityWithTavily(
+        targetEntity,
+        category,
+        assessment.extracted.country ?? record.context.country,
+      );
+
+      if (liveIntel.results.length > 0) {
+        assessment.result.live_intelligence = liveIntel;
+      } else if (process.env.GEMINI_API_KEY) {
+        const geminiGrounding = await searchWithGeminiGrounding(
+          `${targetEntity} ${assessment.extracted.country ?? ""} study abroad verification`,
+        );
+        if (geminiGrounding.results.length > 0) {
+          assessment.result.live_intelligence = geminiGrounding;
+        }
       }
+    } catch (err) {
+      console.warn("Live web intelligence search failed:", err);
     }
-  } catch {
-    // Non-blocking
   }
 
   const replyText = await maybeEnrichReply({

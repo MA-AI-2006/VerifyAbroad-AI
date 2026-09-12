@@ -1,7 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 
 import type { InvestigationResult } from "@/types";
-export { geminiSearchGrounding, verifyWithGoogleSearch } from "@/server/services/geminiSearch";
 
 /**
  * Optional server-side LLM enrichment.
@@ -61,22 +60,41 @@ export async function maybeEnrichReply(input: EnrichInput): Promise<string> {
         input.structured,
       )}\n\nDeterministic draft reply (rewrite for clarity, empathetic advisor tone, keep all facts, warning signals, verdicts, risk level and next verification step):\n${input.draft}`;
 
-      const modelName = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
-      const generatePromise = ai.models.generateContent({
-        model: modelName,
-        contents: prompt,
-        config: {
-          systemInstruction: input.systemGoal,
-          temperature: 0.3,
-          tools: [{ googleSearch: {} }],
-        },
-      });
+      const configuredModel = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
+      let response: any = null;
+      try {
+        const generatePromise = ai.models.generateContent({
+          model: configuredModel,
+          contents: prompt,
+          config: {
+            systemInstruction: input.systemGoal,
+            temperature: 0.3,
+          },
+        });
 
-      const timeoutPromise = new Promise<null>((_, reject) =>
-        setTimeout(() => reject(new Error("Gemini request timed out")), TIMEOUT_MS),
-      );
+        const timeoutPromise = new Promise<null>((_, reject) =>
+          setTimeout(() => reject(new Error("Gemini request timed out")), TIMEOUT_MS),
+        );
 
-      const response = await Promise.race([generatePromise, timeoutPromise]);
+        response = await Promise.race([generatePromise, timeoutPromise]);
+      } catch (modelError) {
+        if (configuredModel !== "gemini-2.5-flash") {
+          try {
+            response = await ai.models.generateContent({
+              model: "gemini-2.5-flash",
+              contents: prompt,
+              config: {
+                systemInstruction: input.systemGoal,
+                temperature: 0.3,
+              },
+            });
+          } catch {
+            throw modelError;
+          }
+        } else {
+          throw modelError;
+        }
+      }
       if (response && response.text) {
         const text = response.text.trim();
         if (text.length > 0) return text;

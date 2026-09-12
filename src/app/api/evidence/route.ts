@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { runInvestigationTurn } from "@/server/engine/run";
 import { addEvidence } from "@/server/repositories/investigations";
 import { loadVerificationData } from "@/server/repositories/verification";
+import { extractTextFromPdf, ingestTextDocument } from "@/server/services/knowledgeBase";
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +53,25 @@ export async function POST(request: Request) {
         if (mime && TEXTUAL.includes(mime)) {
           extractedText = (await file.text()).slice(0, 8000);
           analysisStatus = "analyzed";
+        } else if (mime === "application/pdf" || (file.name && file.name.toLowerCase().endsWith(".pdf"))) {
+          try {
+            const bytes = await file.arrayBuffer();
+            const pdfData = await extractTextFromPdf(Buffer.from(bytes));
+            extractedText = pdfData.text.slice(0, 8000);
+            analysisStatus = "analyzed";
+            note = `PDF parsed successfully (${pdfData.pages} pages). Text extracted and indexed in knowledge base.`;
+            // Ingest into knowledge base
+            await ingestTextDocument(
+              file.name,
+              pdfData.text,
+              `Uploaded Document #${investigationId ?? ""}`,
+              "PDF Evidence",
+            );
+          } catch (pdfErr) {
+            console.warn("PDF parsing failed:", pdfErr);
+            analysisStatus = "pending";
+            note = "PDF document attached. Scanned image or encrypted PDF; paste key text if claims need line-by-line verification.";
+          }
         } else {
           analysisStatus = "pending";
           note =

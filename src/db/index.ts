@@ -3,6 +3,9 @@ import { Pool } from "pg";
 import { createMockDb } from "./mockDb";
 
 const databaseUrl = process.env.DATABASE_URL;
+const isPostgresUrl = Boolean(
+  databaseUrl && (databaseUrl.startsWith("postgres://") || databaseUrl.startsWith("postgresql://")),
+);
 
 const globalForDb = globalThis as typeof globalThis & {
   __arenaNextJsPostgresqlPool?: Pool;
@@ -12,7 +15,7 @@ const globalForDb = globalThis as typeof globalThis & {
 let poolInstance: any = null;
 let dbInstance: any = null;
 
-if (databaseUrl) {
+if (isPostgresUrl && databaseUrl) {
   try {
     const isLocalhost =
       databaseUrl.includes("localhost") ||

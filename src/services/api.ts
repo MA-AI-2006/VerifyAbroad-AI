@@ -6,7 +6,10 @@ import type {
   InvestigationListItem,
   InvestigationRecord,
   InvestigationResult,
+  KnowledgeCitation,
   Language,
+  LiveIntelligenceFinding,
+  SanctionsFinding,
   StudentProfile,
 } from "@/types";
 import { demoAttachmentFromCase, demoCase, demoFollowUps } from "@/data/mock/demoCase";
@@ -316,66 +319,25 @@ export const api = {
     return request<{ guides: unknown[]; total: number }>(`/safety-guides${qs ? `?${qs}` : ""}`);
   },
 
-  checkSanctions(name: string, schema?: string) {
-    const sp = new URLSearchParams({ q: name });
-    if (schema) sp.set("schema", schema);
-    return request<{
-      query: string;
-      hasMatch: boolean;
-      highestRisk: "sanctioned" | "warning" | "clean";
-      summary: string;
-      matches: Array<{
-        id: string;
-        caption: string;
-        risk: string;
-        datasets: string[];
-        reason?: string;
-      }>;
-    }>(`/sanctions/check?${sp.toString()}`);
-  },
-
-  searchTavily(query: string, options?: { depth?: "basic" | "advanced"; limit?: number }) {
-    const sp = new URLSearchParams({ q: query });
-    if (options?.depth) sp.set("depth", options.depth);
-    if (options?.limit) sp.set("limit", String(options.limit));
-    return request<{
-      query: string;
-      answer?: string;
-      results: Array<{ title: string; url: string; content: string; score: number }>;
-      source: string;
-    }>(`/tavily/search?${sp.toString()}`);
-  },
-
-  geminiGroundedSearch(context: {
-    university?: string;
-    consultant?: string;
-    country?: string;
-    offerDetails?: string;
-  }) {
-    return request<{
-      analysis: string;
-      officialLinks: Array<{ title: string; url: string }>;
-      riskIndicators: string[];
-      grounded: boolean;
-    }>("/gemini/search", {
+  checkSanctions(query: string, schema?: "Person" | "Company" | "Organization" | "LegalEntity") {
+    return request<SanctionsFinding>("/sanctions", {
       method: "POST",
-      body: JSON.stringify({ context }),
+      body: JSON.stringify({ query, schema }),
     });
   },
 
-  queryKnowledgeBase(query: string, synthesize = false) {
-    const sp = new URLSearchParams({ q: query, synthesize: String(synthesize) });
-    return request<{
-      answer?: string;
-      results?: Array<{ title: string; source: string; content: string; score: number }>;
-      sources?: Array<{ title: string; source: string; score: number }>;
-    }>(`/rag/query?${sp.toString()}`);
+  searchLiveIntelligence(query: string, category?: "agent" | "university" | "scholarship" | "general", country?: string) {
+    return request<LiveIntelligenceFinding>("/search", {
+      method: "POST",
+      body: JSON.stringify({ query, category, country }),
+    });
   },
 
-  getKnowledgeDocuments() {
-    return request<{ count: number; documents: Array<{ id: string; title: string; source: string; chunkCount: number }> }>(
-      "/rag/documents",
-    );
+  queryKnowledge(query: string, topK?: number) {
+    const sp = new URLSearchParams();
+    sp.set("q", query);
+    if (topK) sp.set("topK", String(topK));
+    return request<{ query: string; citations: KnowledgeCitation[] }>(`/knowledge?${sp.toString()}`);
   },
 };
 

@@ -1,28 +1,15 @@
 import { GoogleGenAI } from "@google/genai";
+import type { LiveIntelligenceFinding, LiveSearchResult } from "@/types";
 
 /**
- * Gemini Search Grounding Service.
+ * Gemini Live Search Grounding Service.
  *
- * Implements real-time Google Search Grounding via @google/genai (`googleSearch: {}`).
- * Grounding connects Gemini directly to live Google Search index to verify:
- * - Current official university admission guidelines and fee structures
- * - Latest embassy visa processing rules and financial requirements
- * - Real-time fraud and scam reports on study abroad consultancies
+ * Calls the Gemini API with Google Search Grounding enabled to dynamically
+ * query Google Search, verify current admissions policies, official URLs,
+ * and scam warnings in real-time.
  */
 
-export interface GroundedSource {
-  title: string;
-  url: string;
-}
-
-export interface GroundedSearchResult {
-  text: string;
-  sources: GroundedSource[];
-  webSearchQueries: string[];
-  grounded: boolean;
-  model: string;
-}
-
+const TIMEOUT_MS = 15_000;
 let genAiClient: GoogleGenAI | null = null;
 
 function getGenAi(): GoogleGenAI | null {
@@ -41,119 +28,84 @@ function getGenAi(): GoogleGenAI | null {
   return genAiClient;
 }
 
-/**
- * Queries Gemini with live Google Search Grounding enabled.
- */
-export async function geminiSearchGrounding(
-  prompt: string,
-  options?: {
-    systemInstruction?: string;
-    model?: string;
-    temperature?: number;
-  },
-): Promise<GroundedSearchResult> {
+export async function searchWithGeminiGrounding(
+  query: string,
+  contextNote?: string,
+): Promise<LiveIntelligenceFinding> {
   const ai = getGenAi();
-  const modelName = options?.model || "gemini-2.5-flash";
-
   if (!ai) {
     return {
-      text: "Gemini API key not configured. Grounding unavailable.",
-      sources: [],
-      webSearchQueries: [],
-      grounded: false,
-      model: modelName,
+      searched: false,
+      query,
+      source: "none",
+      summary: "Gemini API key is not configured for search grounding.",
+      results: [],
     };
   }
 
-  const response = await ai.models.generateContent({
-    model: modelName,
-    contents: prompt,
-    config: {
-      systemInstruction:
-        options?.systemInstruction ||
-        "You are an expert investigative analyst for international student visa safety. Always verify facts using official government immigration and university registrar sources.",
-      temperature: options?.temperature ?? 0.2,
-      tools: [{ googleSearch: {} }],
-    },
-  });
+  const prompt = `You are a study abroad fraud defense and verification intelligence system for Pakistani students.
+Investigate the following claim or institution using live Google Search:
+"${query}"
+${contextNote ? `Additional context: ${contextNote}` : ""}
 
-  const text = response.text?.trim() ?? "";
+Provide a concise, factual verification summary covering:
+1. Is this entity genuine, accredited, and currently operational?
+2. What is its exact official domain and portal URL?
+3. Are there any known fraud patterns, scam reports, or warnings associated with it?
+Be direct, clear, and cite official government or institutional findings.`;
 
-  // Extract grounding metadata from Google Search grounding chunk response
-  const candidate = response.candidates?.[0];
-  const metadata = candidate?.groundingMetadata;
+  try {
+    const configuredModel = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
-  const sources: GroundedSource[] = [];
-  const seenUrls = new Set<string>();
+    // Call Gemini with Google Search tool enabled
+    const response = await ai.models.generateContent({
+      model: configuredModel,
+      contents: prompt,
+      config: {
+        tools: [{ googleSearch: {} }],
+        temperature: 0.2,
+      },
+    });
+    clearTimeout(timeout);
 
-  if (metadata?.groundingChunks) {
-    for (const chunk of metadata.groundingChunks) {
-      const web = (chunk as { web?: { uri?: string; title?: string } }).web;
-      if (web?.uri && !seenUrls.has(web.uri)) {
-        seenUrls.add(web.uri);
-        sources.push({
-          title: web.title || new URL(web.uri).hostname,
-          url: web.uri,
-        });
+    const summary = response.text?.trim() ?? "No summary returned from Gemini Search.";
+    const results: LiveSearchResult[] = [];
+
+    // Extract grounding chunks and citations from response metadata
+    // Check candidate grounding metadata
+    const candidate = response.candidates?.[0];
+    const groundingMetadata = (candidate as { groundingMetadata?: any })?.groundingMetadata;
+
+    if (groundingMetadata?.groundingChunks) {
+      for (const chunk of groundingMetadata.groundingChunks) {
+        if (chunk.web?.uri) {
+          results.push({
+            title: chunk.web.title ?? chunk.web.uri,
+            url: chunk.web.uri,
+            snippet: chunk.web.title ?? "Google Search Grounded Reference",
+            source: "gemini_google_search",
+          });
+        }
       }
     }
+
+    return {
+      searched: true,
+      query,
+      source: "gemini_grounding",
+      summary,
+      results,
+    };
+  } catch (error) {
+    console.warn("Gemini Search Grounding error:", error instanceof Error ? error.message : error);
+    return {
+      searched: false,
+      query,
+      source: "none",
+      summary: "Gemini Live Search Grounding unavailable.",
+      results: [],
+    };
   }
-
-  const webSearchQueries = metadata?.webSearchQueries || [];
-
-  return {
-    text,
-    sources,
-    webSearchQueries,
-    grounded: sources.length > 0 || webSearchQueries.length > 0,
-    model: modelName,
-  };
-}
-
-/**
- * Live investigative check on a student offer, university, or consultant using Google Search Grounding.
- */
-export async function verifyWithGoogleSearch(context: {
-  university?: string;
-  consultant?: string;
-  country?: string;
-  offerDetails?: string;
-}): Promise<{
-  analysis: string;
-  officialLinks: GroundedSource[];
-  riskIndicators: string[];
-  grounded: boolean;
-}> {
-  const prompt = `Conduct an exhaustive live fact-check on this study abroad scenario:
-- Target Destination / Country: ${context.country || "Not specified"}
-- University / College: ${context.university || "Not specified"}
-- Educational Consultant / Agency: ${context.consultant || "Not specified"}
-- Offer / Claim Details: ${context.offerDetails || "Not specified"}
-
-Please perform live Google Searches to answer:
-1. Is the university officially accredited and recognized by the national ministry of education / immigration authority?
-2. Does the institution require tuition to be paid directly to university bank accounts, or through third-party agents?
-3. Are there active warnings, scam reports, or licensing suspensions regarding the consultant or university?
-4. What is the official direct admissions website URL?`;
-
-  const result = await geminiSearchGrounding(prompt, {
-    systemInstruction:
-      "You are VerifyAbroad Safety Analyst. Provide crisp, high-precision findings backed strictly by live Google Search grounding. Cite official domains (.gov, .edu, .ac.uk, DAAD, HEC).",
-  });
-
-  const riskIndicators: string[] = [];
-  const textLower = result.text.toLowerCase();
-  if (textLower.includes("warning") || textLower.includes("fraud") || textLower.includes("scam") || textLower.includes("unaccredited")) {
-    riskIndicators.push("Potential regulatory warnings or accreditation discrepancies identified online.");
-  }
-  if (textLower.includes("not recognized") || textLower.includes("degree mill") || textLower.includes("blacklisted")) {
-    riskIndicators.push("Institution or agency flagged as unrecognized or problematic.");
-  }
-
-  return {
-    analysis: result.text,
-    officialLinks: result.sources,
-    riskIndicators,
-    grounded: result.grounded,
-  };
 }

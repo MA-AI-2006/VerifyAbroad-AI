@@ -9,11 +9,28 @@ import { ScholarshipCard } from "@/components/Scholarship/ScholarshipCard";
 import { AgentCard } from "@/components/Agent/AgentCard";
 import { PaymentCard } from "@/components/Payment/PaymentCard";
 import { CommunitySignals } from "@/components/Community/CommunitySignals";
+import {
+  SanctionsCard,
+  LiveIntelligenceCard,
+  KnowledgeCitationsCard,
+} from "@/components/Investigation/IntelligenceCards";
 
 export function InvestigationReport({ result }: { result: InvestigationResult }) {
   return (
     <section aria-label="Structured investigation result" className="space-y-4">
       <RiskSummary result={result} />
+
+      {result.sanctions_screening ? (
+        <SanctionsCard finding={result.sanctions_screening} />
+      ) : null}
+
+      {result.live_intelligence ? (
+        <LiveIntelligenceCard finding={result.live_intelligence} />
+      ) : null}
+
+      {result.knowledge_citations && result.knowledge_citations.length > 0 ? (
+        <KnowledgeCitationsCard citations={result.knowledge_citations} />
+      ) : null}
 
       {result.university || result.program || result.scholarship || result.agent || result.payment ? (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
