@@ -34,19 +34,16 @@ export function EmergencyRecoveryModal({
   const [error, setError] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!open || data) return;
-    api
-      .getEmergencyProtocols()
-      .then((response) => setData(response.emergency))
-      .catch(() => setError("Could not load the recovery protocols. Please try again."))
-      .finally(() => setLoading(false));
-  }, [open, data]);
-
-  const openModal = () => {
-    if (!data) setLoading(true);
-    setError(null);
+  const handleOpen = () => {
     setOpen(true);
+    if (!data && !loading) {
+      setLoading(true);
+      api
+        .getEmergencyProtocols()
+        .then((response) => setData(response.emergency))
+        .catch(() => setError("Could not load the recovery protocols. Please try again."))
+        .finally(() => setLoading(false));
+    }
   };
 
   useEffect(() => {
@@ -90,7 +87,7 @@ export function EmergencyRecoveryModal({
       {variant === "sidebar" ? (
         <button
           type="button"
-          onClick={openModal}
+          onClick={handleOpen}
           className="flex w-full items-start gap-2.5 rounded-2xl border border-coral-200 bg-coral-50/70 px-3.5 py-3 text-left transition-transform hover:-translate-y-0.5"
         >
           <LifeBuoy className="mt-0.5 size-4 shrink-0 text-coral-600" aria-hidden="true" />
@@ -104,7 +101,7 @@ export function EmergencyRecoveryModal({
       ) : (
         <button
           type="button"
-          onClick={openModal}
+          onClick={handleOpen}
           className="inline-flex items-center gap-1.5 rounded-full border border-white bg-white/80 px-3 py-1.5 text-xs font-bold text-coral-700 transition-colors hover:bg-coral-50"
         >
           <LifeBuoy className="size-3.5" aria-hidden="true" />

@@ -1,0 +1,58 @@
+[
+  {
+    "agent_name": "Bilal Ahmed",
+    "company_name": "Bright Path Education Consultants",
+    "rating": 4.3,
+    "report_count": 12,
+    "common_complaints": [
+      "Slow response time during peak season"
+    ],
+    "data_label": "Sample/demo data for hackathon MVP — not real crowd-sourced reports"
+  },
+  {
+    "agent_name": "Sana Malik",
+    "company_name": "Horizon Overseas Consultancy",
+    "rating": 3.2,
+    "report_count": 28,
+    "common_complaints": [
+      "High service fees",
+      "Poor communication",
+      "Delayed applications"
+    ],
+    "data_label": "Sample/demo data for hackathon MVP — not real crowd-sourced reports"
+  },
+  {
+    "agent_name": "Ahmed Raza",
+    "company_name": "Global Future Consultants",
+    "rating": 1.8,
+    "report_count": 9,
+    "common_complaints": [
+      "Requested payment to a personal bank account",
+      "Stopped responding after payment",
+      "No physical office found"
+    ],
+    "data_label": "Sample/demo data for hackathon MVP — not real crowd-sourced reports"
+  },
+  {
+    "agent_name": "Fatima Sheikh",
+    "company_name": "EduWay Consultants",
+    "rating": 3.9,
+    "report_count": 15,
+    "common_complaints": [
+      "Unclear fee breakdown"
+    ],
+    "data_label": "Sample/demo data for hackathon MVP — not real crowd-sourced reports"
+  },
+  {
+    "agent_name": "Usman Tariq",
+    "company_name": "VisaSure Guaranteed Admissions",
+    "rating": 1.2,
+    "report_count": 21,
+    "common_complaints": [
+      "Guaranteed visa claim did not hold up",
+      "Pressured urgent payment",
+      "No verifiable business registration"
+    ],
+    "data_label": "Sample/demo data for hackathon MVP — not real crowd-sourced reports"
+  }
+]

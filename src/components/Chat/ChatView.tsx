@@ -21,7 +21,13 @@ const LANGUAGES: { value: Language; label: string }[] = [
   { value: "urdu", label: "اردو" },
 ];
 
-export function ChatView({ initialInvestigation }: { initialInvestigation?: InvestigationRecord | null }) {
+export function ChatView({
+  initialInvestigation,
+  initialPrompt,
+}: {
+  initialInvestigation?: InvestigationRecord | null;
+  initialPrompt?: string;
+}) {
   const investigation = useInvestigation({ investigation: initialInvestigation ?? null });
   const scrollRef = useRef<HTMLDivElement>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -209,6 +215,8 @@ export function ChatView({ initialInvestigation }: { initialInvestigation?: Inve
         </div>
 
         <Composer
+          key={initialPrompt ?? "composer-default"}
+          initialText={initialPrompt}
           onSend={(text) => void investigation.send(text)}
           attachments={investigation.attachments}
           onRemoveAttachment={investigation.removeAttachment}

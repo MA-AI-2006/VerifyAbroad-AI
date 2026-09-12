@@ -1,0 +1,91 @@
+[
+  {
+    "agent_name": "Bilal Ahmed",
+    "company_name": "Bright Path Education Consultants",
+    "aliases": [
+      "bilal ahmed",
+      "bilal",
+      "bright path",
+      "brightpath"
+    ],
+    "city": "Lahore",
+    "claimed_universities": [
+      "University of Manchester",
+      "University of Toronto"
+    ],
+    "contact_info": "info@brightpath-edu-example.com | +92-42-XXXXXXX",
+    "status": "verified",
+    "verification_date": "2026-06-10",
+    "notes": "Listed as an official recruitment partner on the University of Manchester's published partner page."
+  },
+  {
+    "agent_name": "Sana Malik",
+    "company_name": "Horizon Overseas Consultancy",
+    "aliases": [
+      "sana malik",
+      "sana",
+      "horizon overseas",
+      "horizon"
+    ],
+    "city": "Karachi",
+    "claimed_universities": [
+      "University of Melbourne"
+    ],
+    "contact_info": "contact@horizon-overseas-example.com | +92-21-XXXXXXX",
+    "status": "needs_verification",
+    "verification_date": "2026-07-02",
+    "notes": "Company registration found, but no confirmation of official partner status from the university."
+  },
+  {
+    "agent_name": "Ahmed Raza",
+    "company_name": "Global Future Consultants",
+    "aliases": [
+      "ahmed raza",
+      "global future",
+      "global future consultants"
+    ],
+    "city": "Islamabad",
+    "claimed_universities": [
+      "Arizona State University"
+    ],
+    "contact_info": "globalfuture.example@gmail.com | +92-300-XXXXXXX",
+    "status": "not_found",
+    "verification_date": "2026-08-01",
+    "notes": "No business registration or official partner listing found matching this name; requesting payment to a personal account has been reported."
+  },
+  {
+    "agent_name": "Fatima Sheikh",
+    "company_name": "EduWay Consultants",
+    "aliases": [
+      "fatima sheikh",
+      "fatima",
+      "eduway"
+    ],
+    "city": "Lahore",
+    "claimed_universities": [
+      "Technical University of Munich"
+    ],
+    "contact_info": "info@eduway-example.com | +92-42-YYYYYYY",
+    "status": "needs_verification",
+    "verification_date": "2026-07-20",
+    "notes": "TUM's official application process does not require an agent; claims of guaranteed admission should be treated as a red flag regardless of agent status."
+  },
+  {
+    "agent_name": "Usman Tariq",
+    "company_name": "VisaSure Guaranteed Admissions",
+    "aliases": [
+      "usman tariq",
+      "usman",
+      "visasure",
+      "visa sure"
+    ],
+    "city": "Faisalabad",
+    "claimed_universities": [
+      "Global International University"
+    ],
+    "contact_info": "visasure.guaranteed@example.com | +92-41-ZZZZZZZ",
+    "status": "not_found",
+    "verification_date": "2026-08-15",
+    "notes": "No matching university found for the claimed institution; multiple fraud-pattern indicators present in advertising (guaranteed visa, guaranteed admission). Included as a high-risk test case."
+  }
+]

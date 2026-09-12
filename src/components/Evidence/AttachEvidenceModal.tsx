@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ClipboardList,
   FileText,
@@ -68,19 +68,18 @@ export function AttachEvidenceModal({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
-  const resetForm = useCallback(() => {
-    setType("message");
-    setTitle("");
-    setText("");
-    setUrl("");
-    setFile(null);
-    setError(null);
-  }, []);
-
-  const handleClose = useCallback(() => {
-    resetForm();
-    onClose();
-  }, [onClose, resetForm]);
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (open) {
+      setType("message");
+      setTitle("");
+      setText("");
+      setUrl("");
+      setFile(null);
+      setError(null);
+    }
+  }
 
   // Load the verified official scholarship URL from the backend (never invented).
   useEffect(() => {
@@ -105,7 +104,7 @@ export function AttachEvidenceModal({
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
-        handleClose();
+        onClose();
         return;
       }
       if (event.key !== "Tab" || !panel) return;
@@ -132,7 +131,7 @@ export function AttachEvidenceModal({
       document.removeEventListener("keydown", onKeyDown);
       document.body.style.overflow = "";
     };
-  }, [open, handleClose]);
+  }, [open, onClose]);
 
   if (!open) return null;
 
@@ -166,7 +165,7 @@ export function AttachEvidenceModal({
     } else if (file) {
       onUploadFile(file, title.trim() || file.name);
     }
-    handleClose();
+    onClose();
   };
 
   return (
@@ -174,7 +173,7 @@ export function AttachEvidenceModal({
       <button
         type="button"
         aria-label="Close attach evidence"
-        onClick={handleClose}
+        onClick={onClose}
         className="absolute inset-0 bg-ink-900/35 backdrop-blur-sm"
       />
 
@@ -203,7 +202,7 @@ export function AttachEvidenceModal({
             </div>
             <button
               type="button"
-              onClick={handleClose}
+              onClick={onClose}
               aria-label="Close"
               className="grid size-9 shrink-0 place-items-center rounded-xl bg-white/85 text-ink-700 transition-colors hover:bg-white"
             >
@@ -501,7 +500,7 @@ export function AttachEvidenceModal({
           <div className="flex flex-wrap items-center justify-end gap-2.5">
             <button
               type="button"
-              onClick={handleClose}
+              onClick={onClose}
               className="rounded-2xl border border-[color:var(--color-hairline)] bg-white px-4 py-2.5 text-sm font-bold text-ink-800 transition-colors hover:bg-navy-50"
             >
               Cancel

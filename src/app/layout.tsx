@@ -5,9 +5,14 @@ import { AppShell } from "@/components/Navigation/AppShell";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "VerifyAbroad AI — Verify Before You Trust, Pay, or Proceed",
+  title: "VerifyAbroad AI",
   description:
-    "VerifyAbroad AI is an AI-powered study-abroad safety assistant for Pakistani students. Investigate universities, scholarships, consultants, offers and payment requests before you trust them or pay.",
+    "AI-powered study-abroad safety assistant for Pakistani students to investigate universities, scholarships, consultants, and payment requests.",
+  openGraph: {
+    title: "VerifyAbroad AI",
+    description:
+      "AI-powered study-abroad safety assistant for Pakistani students to investigate universities, scholarships, consultants, and payment requests.",
+  },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

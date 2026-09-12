@@ -1,3 +1,5 @@
+import { GoogleGenAI } from "@google/genai";
+
 import type { InvestigationResult } from "@/types";
 
 /**
@@ -9,7 +11,25 @@ import type { InvestigationResult } from "@/types";
  * does not depend on external services.
  */
 
-const TIMEOUT_MS = 12_000;
+const TIMEOUT_MS = 15_000;
+
+let genAiClient: GoogleGenAI | null = null;
+
+function getGenAi(): GoogleGenAI | null {
+  const key = process.env.GEMINI_API_KEY ?? process.env.GOOGLE_API_KEY;
+  if (!key) return null;
+  if (!genAiClient) {
+    genAiClient = new GoogleGenAI({
+      apiKey: key,
+      httpOptions: {
+        headers: {
+          "User-Agent": "aistudio-build",
+        },
+      },
+    });
+  }
+  return genAiClient;
+}
 
 export function llmConfigured(): boolean {
   return Boolean(process.env.GEMINI_API_KEY ?? process.env.GOOGLE_API_KEY ?? process.env.OPENAI_API_KEY);
@@ -28,45 +48,34 @@ interface EnrichInput {
  * depends on the external call succeeding.
  */
 export async function maybeEnrichReply(input: EnrichInput): Promise<string> {
-  const geminiKey = process.env.GEMINI_API_KEY ?? process.env.GOOGLE_API_KEY;
-  if (geminiKey) {
+  const ai = getGenAi();
+  if (ai) {
     try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          signal: controller.signal,
-          body: JSON.stringify({
-            system_instruction: { parts: [{ text: input.systemGoal }] },
-            contents: [
-              {
-                role: "user",
-                parts: [
-                  {
-                    text: `Student message: ${input.studentText}\n\nStructured investigation output (must not be contradicted):\n${JSON.stringify(
-                      input.structured,
-                    )}\n\nDeterministic draft reply (rewrite for clarity and tone, keep all facts, verdicts, risk level and next step):\n${input.draft}`,
-                  },
-                ],
-              },
-            ],
-            generationConfig: { temperature: 0.3, maxOutputTokens: 900 },
-          }),
+      const prompt = `Student message: ${input.studentText}\n\nStructured investigation output (must not be contradicted):\n${JSON.stringify(
+        input.structured,
+      )}\n\nDeterministic draft reply (rewrite for clarity, empathetic advisor tone, keep all facts, warning signals, verdicts, risk level and next verification step):\n${input.draft}`;
+
+      const generatePromise = ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt,
+        config: {
+          systemInstruction: input.systemGoal,
+          temperature: 0.3,
         },
+      });
+
+      const timeoutPromise = new Promise<null>((_, reject) =>
+        setTimeout(() => reject(new Error("Gemini request timed out")), TIMEOUT_MS),
       );
-      clearTimeout(timer);
-      if (response.ok) {
-        const payload = (await response.json()) as {
-          candidates?: { content?: { parts?: { text?: string }[] } }[];
-        };
-        const text = payload.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
-        if (text.trim().length > 0) return text.trim();
+
+      const response = await Promise.race([generatePromise, timeoutPromise]);
+      if (response && response.text) {
+        const text = response.text.trim();
+        if (text.length > 0) return text;
       }
-    } catch {
-      // fall through to the deterministic draft
+    } catch (cause) {
+      console.warn("Gemini enrichment fallback:", cause instanceof Error ? cause.message : cause);
+      // Fall through to other providers or deterministic draft
     }
   }
 

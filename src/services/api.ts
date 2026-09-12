@@ -239,6 +239,69 @@ export const api = {
   getDemoCase() {
     return request<{ demo: typeof demoCase; follow_ups: string[] }>("/demo");
   },
+
+  deleteInvestigation(id: string | number) {
+    return request<{ success: boolean; id: number }>(`/investigations/${id}`, { method: "DELETE" });
+  },
+
+  analyzeInvestigation(id: string | number, message?: string) {
+    return request<{
+      success: boolean;
+      investigation: InvestigationRecord;
+      result: InvestigationResult | null;
+      message: ChatMessage;
+    }>(`/investigation/${id}/analyze`, {
+      method: "POST",
+      body: JSON.stringify({ message }),
+    });
+  },
+
+  submitReport(input: {
+    agent_name: string;
+    company_name?: string;
+    complaint: string;
+    rating?: number;
+  }) {
+    return request<{ success: boolean; message?: string; report?: unknown }>("/reports", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  },
+
+  getUniversities(query?: { q?: string; country?: string; level?: string }) {
+    const sp = new URLSearchParams();
+    if (query?.q) sp.set("q", query.q);
+    if (query?.country) sp.set("country", query.country);
+    if (query?.level) sp.set("level", query.level);
+    const qs = sp.toString();
+    return request<{ universities: unknown[]; total: number }>(`/universities${qs ? `?${qs}` : ""}`);
+  },
+
+  getScholarships(query?: { q?: string; country?: string; level?: string }) {
+    const sp = new URLSearchParams();
+    if (query?.q) sp.set("q", query.q);
+    if (query?.country) sp.set("country", query.country);
+    if (query?.level) sp.set("level", query.level);
+    const qs = sp.toString();
+    return request<{ scholarships: unknown[]; total: number }>(`/scholarships${qs ? `?${qs}` : ""}`);
+  },
+
+  getAgents(query?: { q?: string; city?: string; status?: string }) {
+    const sp = new URLSearchParams();
+    if (query?.q) sp.set("q", query.q);
+    if (query?.city) sp.set("city", query.city);
+    if (query?.status) sp.set("status", query.status);
+    const qs = sp.toString();
+    return request<{ agents: unknown[]; total: number }>(`/agents${qs ? `?${qs}` : ""}`);
+  },
+
+  getSafetyGuides(query?: { q?: string; category?: string }) {
+    const sp = new URLSearchParams();
+    if (query?.q) sp.set("q", query.q);
+    if (query?.category) sp.set("category", query.category);
+    const qs = sp.toString();
+    return request<{ guides: unknown[]; total: number }>(`/safety-guides${qs ? `?${qs}` : ""}`);
+  },
 };
 
 /**

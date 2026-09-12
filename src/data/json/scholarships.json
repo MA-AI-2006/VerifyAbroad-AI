@@ -1,0 +1,117 @@
+[
+  {
+    "name": "Chevening Scholarship",
+    "aliases": [
+      "chevening"
+    ],
+    "country": "United Kingdom",
+    "funded_by": "UK Government (FCDO)",
+    "funding_type": "fully_funded",
+    "eligible_levels": [
+      "MS"
+    ],
+    "application_route": "Direct application via official Chevening portal",
+    "application_fee": "Free to apply — no agent or fee required",
+    "official_website": "https://www.chevening.org",
+    "application_portal": "https://www.chevening.org/apply/",
+    "notes": "Fully funded, no agent or fee required to apply. Applications open annually and are free."
+  },
+  {
+    "name": "Fulbright Foreign Student Program",
+    "aliases": [
+      "fulbright",
+      "usefp"
+    ],
+    "country": "United States",
+    "funded_by": "US Government / USEFP (Pakistan)",
+    "funding_type": "fully_funded",
+    "eligible_levels": [
+      "MS",
+      "PhD"
+    ],
+    "application_route": "Direct application via USEFP Pakistan",
+    "application_fee": "Free to apply — no third-party agent or payment required",
+    "official_website": "https://www.usefpakistan.org",
+    "application_portal": "https://www.usefpakistan.org/Fulbright/how-to-apply",
+    "notes": "Administered in Pakistan by USEFP; no third-party agent or payment is required to apply."
+  },
+  {
+    "name": "DAAD Scholarships",
+    "aliases": [
+      "daad",
+      "daad scholarship"
+    ],
+    "country": "Germany",
+    "funded_by": "German Academic Exchange Service",
+    "funding_type": "fully_funded",
+    "eligible_levels": [
+      "BS",
+      "MS",
+      "PhD"
+    ],
+    "application_route": "Direct application through the DAAD scholarship database",
+    "application_fee": "Free to apply directly — no agent fee required",
+    "official_website": "https://www.daad.de",
+    "application_portal": "https://www2.daad.de/deutschland/stipendium/datenbank/en/",
+    "notes": "Free to apply directly through DAAD's official database; no agent fee required."
+  },
+  {
+    "name": "Australia Awards Scholarships",
+    "aliases": [
+      "australia awards",
+      "aus awards"
+    ],
+    "country": "Australia",
+    "funded_by": "Australian Government (DFAT)",
+    "funding_type": "fully_funded",
+    "eligible_levels": [
+      "BS",
+      "MS",
+      "PhD"
+    ],
+    "application_route": "Direct application via the OASIS portal",
+    "application_fee": "Free to apply — no agent required",
+    "official_website": "https://www.dfat.gov.au/people-to-people/australia-awards",
+    "application_portal": "https://oasis.dfat.gov.au",
+    "notes": "Fully funded; applications submitted directly via OASIS portal, no agent required."
+  },
+  {
+    "name": "Commonwealth Scholarship",
+    "aliases": [
+      "commonwealth"
+    ],
+    "country": "United Kingdom",
+    "funded_by": "UK Government (CSC)",
+    "funding_type": "fully_funded",
+    "eligible_levels": [
+      "MS",
+      "PhD"
+    ],
+    "application_route": "Nominating body (in Pakistan, typically HEC)",
+    "application_fee": "Free to apply",
+    "official_website": "https://cscuk.fcdo.gov.uk",
+    "application_portal": "https://cscuk.fcdo.gov.uk/apply/",
+    "notes": "Applications processed alongside a nominating body (in Pakistan, typically HEC); free to apply."
+  },
+  {
+    "name": "HEC Overseas Scholarship Schemes",
+    "aliases": [
+      "hec",
+      "hec scholarship",
+      "hec overseas"
+    ],
+    "country": "Various",
+    "funded_by": "Higher Education Commission, Pakistan",
+    "funding_type": "fully_funded",
+    "eligible_levels": [
+      "BS",
+      "MS",
+      "PhD"
+    ],
+    "application_route": "Direct application via HEC Pakistan",
+    "application_fee": "Free to apply",
+    "official_website": "https://www.hec.gov.pk",
+    "application_portal": "https://www.hec.gov.pk/english/scholarshipsgrants/",
+    "notes": "Official Pakistani government scholarship body; verify any scheme name directly against HEC's published list before trusting an agent's claim about it."
+  }
+]

@@ -14,9 +14,23 @@ export const metadata: Metadata = {
 export default async function InvestigatePage({
   searchParams,
 }: {
-  searchParams: Promise<{ id?: string }>;
+  searchParams: Promise<{
+    id?: string;
+    q?: string;
+    country?: string;
+    university?: string;
+    scholarship?: string;
+    consultant?: string;
+  }>;
 }) {
-  const { id } = await searchParams;
-  const investigation = id ? await getInvestigation(Number(id)).catch(() => null) : null;
-  return <ChatView initialInvestigation={investigation} />;
+  const params = await searchParams;
+  const investigation = params.id ? await getInvestigation(Number(params.id)).catch(() => null) : null;
+  const initialPrompt =
+    params.q ||
+    (params.university ? `I want to verify an admission offer from ${params.university}` : "") ||
+    (params.scholarship ? `I want to verify the ${params.scholarship} scholarship claim` : "") ||
+    (params.consultant ? `I want to check consultant ${params.consultant}` : "") ||
+    (params.country ? `I am looking into study abroad options and offers in ${params.country}. What should I verify?` : "");
+
+  return <ChatView initialInvestigation={investigation} initialPrompt={initialPrompt} />;
 }

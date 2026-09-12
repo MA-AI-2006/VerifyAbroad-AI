@@ -1,0 +1,160 @@
+[
+  {
+    "country": "United Kingdom",
+    "country_aliases": [
+      "uk",
+      "britain",
+      "england",
+      "london"
+    ],
+    "channels": [
+      {
+        "name": "UK Government student visa info",
+        "url": "https://www.gov.uk/student-visa"
+      },
+      {
+        "name": "UCAS (undergraduate applications)",
+        "url": "https://www.ucas.com"
+      },
+      {
+        "name": "British Council Pakistan",
+        "url": "https://www.britishcouncil.pk"
+      }
+    ]
+  },
+  {
+    "country": "United States",
+    "country_aliases": [
+      "usa",
+      "us",
+      "america"
+    ],
+    "channels": [
+      {
+        "name": "US Department of State student visa info",
+        "url": "https://travel.state.gov/content/travel/en/us-visas/study.html"
+      },
+      {
+        "name": "EducationUSA Pakistan",
+        "url": "https://educationusapakistan.org"
+      },
+      {
+        "name": "USEFP (Fulbright Pakistan)",
+        "url": "https://www.usefpakistan.org"
+      }
+    ]
+  },
+  {
+    "country": "Canada",
+    "country_aliases": [
+      "canada"
+    ],
+    "channels": [
+      {
+        "name": "Immigration, Refugees and Citizenship Canada (IRCC) - study permits",
+        "url": "https://www.canada.ca/en/immigration-refugees-citizenship/services/study-canada.html"
+      },
+      {
+        "name": "EduCanada",
+        "url": "https://www.educanada.ca"
+      }
+    ]
+  },
+  {
+    "country": "Australia",
+    "country_aliases": [
+      "australia"
+    ],
+    "channels": [
+      {
+        "name": "Australian Government student visa info",
+        "url": "https://immi.homeaffairs.gov.au/visas/getting-a-visa/visa-listing/student-500"
+      },
+      {
+        "name": "Study Australia (official)",
+        "url": "https://www.studyaustralia.gov.au"
+      }
+    ]
+  },
+  {
+    "country": "Germany",
+    "country_aliases": [
+      "germany",
+      "deutschland"
+    ],
+    "channels": [
+      {
+        "name": "DAAD official portal",
+        "url": "https://www.daad.de"
+      },
+      {
+        "name": "uni-assist (application processing)",
+        "url": "https://www.uni-assist.de"
+      },
+      {
+        "name": "German Missions in Pakistan - student visa",
+        "url": "https://islamabad.diplo.de"
+      }
+    ]
+  },
+  {
+    "country": "Türkiye",
+    "country_aliases": [
+      "turkey",
+      "turkiye"
+    ],
+    "channels": [
+      {
+        "name": "Study in Türkiye (Council of Higher Education)",
+        "url": "https://www.studyinturkiye.gov.tr"
+      },
+      {
+        "name": "Türkiye Scholarships (official)",
+        "url": "https://www.turkiyeburslari.gov.tr"
+      }
+    ]
+  },
+  {
+    "country": "Singapore",
+    "country_aliases": [
+      "singapore"
+    ],
+    "channels": [
+      {
+        "name": "Immigration & Checkpoints Authority - Student's Pass",
+        "url": "https://www.ica.gov.sg/reside/STP/apply-student-s-pass"
+      }
+    ]
+  },
+  {
+    "country": "Saudi Arabia",
+    "country_aliases": [
+      "saudi",
+      "saudi arabia",
+      "ksa"
+    ],
+    "channels": [
+      {
+        "name": "Study in Saudi (Ministry of Education)",
+        "url": "https://www.moe.gov.sa"
+      }
+    ]
+  },
+  {
+    "country": "Pakistan (source-country verification)",
+    "country_aliases": [
+      "pakistan",
+      "pakistani"
+    ],
+    "channels": [
+      {
+        "name": "Higher Education Commission (HEC) Pakistan",
+        "url": "https://www.hec.gov.pk"
+      },
+      {
+        "name": "Bureau of Emigration & Overseas Employment (for employment-linked cases, reference only)",
+        "url": "https://beoe.gov.pk"
+      }
+    ]
+  }
+]

@@ -1,0 +1,141 @@
+[
+  {
+    "name": "University of Manchester",
+    "aliases": [
+      "manchester",
+      "uom",
+      "university of manchester"
+    ],
+    "country": "United Kingdom",
+    "official_website": "https://www.manchester.ac.uk",
+    "official_application_portal": "https://www.manchester.ac.uk/study/postgraduate/apply/",
+    "program_types": [
+      "Undergraduate",
+      "Postgraduate",
+      "PhD"
+    ],
+    "accepts_direct_applications": true,
+    "notes": "Accepts direct online applications; also lists official recruitment partners on its website."
+  },
+  {
+    "name": "University of Toronto",
+    "aliases": [
+      "toronto",
+      "u of t",
+      "utoronto"
+    ],
+    "country": "Canada",
+    "official_website": "https://www.utoronto.ca",
+    "official_application_portal": "https://future.utoronto.ca/apply/",
+    "program_types": [
+      "Undergraduate",
+      "Postgraduate",
+      "PhD"
+    ],
+    "accepts_direct_applications": true,
+    "notes": "Applications via OUAC (undergrad) or School of Graduate Studies portal (postgrad)."
+  },
+  {
+    "name": "University of Melbourne",
+    "aliases": [
+      "melbourne",
+      "unimelb"
+    ],
+    "country": "Australia",
+    "official_website": "https://www.unimelb.edu.au",
+    "official_application_portal": "https://study.unimelb.edu.au/how-to-apply",
+    "program_types": [
+      "Undergraduate",
+      "Postgraduate",
+      "PhD"
+    ],
+    "accepts_direct_applications": true,
+    "notes": "Direct applications accepted; official agent list published on university site."
+  },
+  {
+    "name": "Technical University of Munich",
+    "aliases": [
+      "munich",
+      "tum",
+      "tu munich",
+      "technical university of munich"
+    ],
+    "country": "Germany",
+    "official_website": "https://www.tum.de",
+    "official_application_portal": "https://www.tum.de/en/studies/application",
+    "program_types": [
+      "Undergraduate",
+      "Postgraduate",
+      "PhD"
+    ],
+    "accepts_direct_applications": true,
+    "notes": "Most programs are tuition-free; applications via uni-assist or TUMonline, no agent required."
+  },
+  {
+    "name": "Arizona State University",
+    "aliases": [
+      "arizona state",
+      "asu"
+    ],
+    "country": "United States",
+    "official_website": "https://www.asu.edu",
+    "official_application_portal": "https://admission.asu.edu/apply",
+    "program_types": [
+      "Undergraduate",
+      "Postgraduate",
+      "PhD"
+    ],
+    "accepts_direct_applications": true,
+    "notes": "Direct application via ASU admission portal; F-1 visa process handled after I-20 issuance."
+  },
+  {
+    "name": "King Saud University",
+    "aliases": [
+      "ksu",
+      "king saud",
+      "riyadh"
+    ],
+    "country": "Saudi Arabia",
+    "official_website": "https://www.ksu.edu.sa",
+    "official_application_portal": "https://dgs.ksu.edu.sa",
+    "program_types": [
+      "Undergraduate",
+      "Postgraduate"
+    ],
+    "accepts_direct_applications": true,
+    "notes": "Government scholarship-linked admissions typically go through the Deanship of Graduate Studies portal."
+  },
+  {
+    "name": "National University of Singapore",
+    "aliases": [
+      "nus",
+      "singapore university",
+      "national university of singapore"
+    ],
+    "country": "Singapore",
+    "official_website": "https://www.nus.edu.sg",
+    "official_application_portal": "https://www.nus.edu.sg/oam/apply-to-nus",
+    "program_types": [
+      "Undergraduate",
+      "Postgraduate",
+      "PhD"
+    ],
+    "accepts_direct_applications": true,
+    "notes": "Direct applications only; NUS does not use paid third-party agents for admissions."
+  },
+  {
+    "name": "Global International University",
+    "aliases": [
+      "global international university",
+      "global international",
+      "giu"
+    ],
+    "country": "Unknown",
+    "official_website": null,
+    "official_application_portal": null,
+    "program_types": [],
+    "accepts_direct_applications": null,
+    "notes": "No matching institution found in verification data — treat any claim referencing this name as needing further verification. Included as a test case for the 'not_found' verdict.",
+    "data_label": "Unverifiable placeholder institution (test case)"
+  }
+]

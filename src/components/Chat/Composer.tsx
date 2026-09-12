@@ -23,6 +23,7 @@ const FUNDING_OPTIONS: { value: FundingType; label: string }[] = [
 ];
 
 export interface ComposerProps {
+  initialText?: string;
   onSend: (text: string) => void;
   attachments: ChatAttachment[];
   onRemoveAttachment: (id: string) => void;
@@ -37,7 +38,7 @@ export interface ComposerProps {
 }
 
 export function Composer(props: ComposerProps) {
-  const [value, setValue] = useState("");
+  const [value, setValue] = useState(props.initialText ?? "");
   const [evidenceOpen, setEvidenceOpen] = useState(false);
 
   const submit = () => {
