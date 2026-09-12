@@ -4,8 +4,8 @@
  * The backend provides the actual investigation engine, verification pipeline,
  * and risk scoring. This client handles all communication.
  *
- * When NEXT_PUBLIC_API_BASE_URL is set to the backend URL, all frontend
- * requests go through this client to the FastAPI backend.
+ * When BACKEND_URL is set to the FastAPI backend URL, all requests go through
+ * this client to the investigation engine.
  *
  * Environment variables:
  * - BACKEND_URL: The FastAPI backend URL (e.g., http://localhost:8000 or https://api.example.com)
@@ -45,7 +45,6 @@ async function backendFetch<T>(
         'Content-Type': 'application/json',
         ...(init?.headers ?? {}),
       },
-      // Ensure we don't cache backend responses
       cache: 'no-store',
     });
 
@@ -201,7 +200,6 @@ export const evidence = {
         method: 'POST',
         body: formData,
         cache: 'no-store',
-        // Don't set Content-Type; browser will set it with boundary
       });
 
       if (!response.ok) {

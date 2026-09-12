@@ -1,7 +1,7 @@
 /**
  * Integration bridge between frontend and backend.
  *
- * This file adapts the old api.ts contract to use the new backend-client.ts
+ * This file adapts the frontend API contract to use the FastAPI backend
  * when BACKEND_URL is configured. When not configured, it falls back to
  * the built-in Next.js routes.
  */
