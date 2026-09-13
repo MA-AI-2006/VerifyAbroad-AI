@@ -1,7 +1,16 @@
 import type { ChatMessage, DegreeLevel, FundingType, InvestigationResult, Language } from "@/types";
 import { extractFacts } from "@/server/engine/extract";
 import { messagesToCorpus, runAssessment } from "@/server/engine/assess";
+import { detectAndAnswerQuestion } from "@/server/engine/questionAnswer";
 import { t } from "@/server/engine/phrases";
+import {
+  createInitialInvestigationState,
+  detectCorrections,
+  detectFrustration,
+  detectUserNegations,
+  getFieldForTopic,
+  type PersistentInvestigationState,
+} from "@/server/engine/state";
 import { maybeEnrichReply } from "@/server/llm";
 import { loadVerificationData } from "@/server/repositories/verification";
 import { screenAgainstSanctions } from "@/server/services/opensanctions";
@@ -62,11 +71,149 @@ export async function runInvestigationTurn(input: TurnInput): Promise<TurnOutput
   const language: Language =
     latestFacts && latestFacts.language !== "english" ? latestFacts.language : facts.language;
 
+  // Retrieve or initialize state
+  const recordRow = await getInvestigationRow(input.investigationId);
+  const rawState = (recordRow?.investigationState ?? record.latest_result?.investigation_state) as
+    | PersistentInvestigationState
+    | undefined;
+
+  const state: PersistentInvestigationState = rawState
+    ? {
+        stage: rawState.stage ?? "INTAKE",
+        turnCount: rawState.turnCount ?? 0,
+        fields: { ...rawState.fields },
+        questionHistory: [...(rawState.questionHistory ?? [])],
+        activeQuestionTopic: rawState.activeQuestionTopic ?? null,
+        userCorrections: [...(rawState.userCorrections ?? [])],
+        frustrationDetected: Boolean(rawState.frustrationDetected),
+        staleVerification: Boolean(rawState.staleVerification),
+      }
+    : createInitialInvestigationState();
+
+  state.turnCount += 1;
+
+  // 1. Frustration detection
+  const hasFrustration = detectFrustration(studentText);
+  let frustrationApology = false;
+  if (hasFrustration) {
+    state.frustrationDetected = true;
+    frustrationApology = true;
+  }
+
+  // 2. User negations detection (explicitly stating no agent, no scholarship, etc.)
+  const negations = detectUserNegations(studentText);
+  if (negations.noAgent) {
+    state.fields.agent = { value: null, status: "user_stated_none", lastUpdatedTurn: state.turnCount };
+    if (state.activeQuestionTopic === "agent") state.activeQuestionTopic = null;
+  }
+  if (negations.noScholarship) {
+    state.fields.scholarship = { value: null, status: "user_stated_none", lastUpdatedTurn: state.turnCount };
+    if (state.activeQuestionTopic === "scholarship") state.activeQuestionTopic = null;
+  }
+  if (negations.noUniversity) {
+    state.fields.university = { value: null, status: "user_stated_none", lastUpdatedTurn: state.turnCount };
+    if (state.activeQuestionTopic === "university") state.activeQuestionTopic = null;
+  }
+  if (negations.unknownValue && state.activeQuestionTopic) {
+    const topicField = getFieldForTopic(state.activeQuestionTopic);
+    if (topicField && topicField !== "hasEvidence") {
+      const field = state.fields[topicField] as import("@/server/engine/state").FieldState<any>;
+      if (field) {
+        field.status = "unknown_by_user";
+        field.lastUpdatedTurn = state.turnCount;
+      }
+    }
+    state.activeQuestionTopic = null;
+  }
+
+  // 3. User corrections detection
+  const corrections = detectCorrections(studentText, state);
+  let correctionNote: string | null = null;
+  if (corrections.length > 0) {
+    state.userCorrections.push(...corrections);
+    correctionNote = corrections.map((c) => `${c.field}: "${c.newValue}"`).join(", ");
+    for (const c of corrections) {
+      if (c.field === "university") {
+        state.fields.university = { value: String(c.newValue), status: "known", lastUpdatedTurn: state.turnCount };
+      } else if (c.field === "country") {
+        state.fields.country = { value: String(c.newValue), status: "known", lastUpdatedTurn: state.turnCount };
+      } else if (c.field === "agent") {
+        state.fields.agent = { value: String(c.newValue), status: "known", lastUpdatedTurn: state.turnCount };
+      } else if (c.field === "scholarship") {
+        state.fields.scholarship = { value: String(c.newValue), status: "known", lastUpdatedTurn: state.turnCount };
+      } else if (c.field === "program") {
+        state.fields.program = { value: String(c.newValue), status: "known", lastUpdatedTurn: state.turnCount };
+      }
+    }
+  }
+
+  // 4. Update known fields from the latest turn
+  if (latestFacts) {
+    if (latestFacts.country && state.fields.country.status !== "user_stated_none") {
+      state.fields.country = { value: latestFacts.country, status: "known", lastUpdatedTurn: state.turnCount };
+    }
+    if (latestFacts.degreeLevel) {
+      state.fields.degreeLevel = { value: latestFacts.degreeLevel, status: "known", lastUpdatedTurn: state.turnCount };
+    }
+    if (latestFacts.universityHint && !negations.noUniversity && state.fields.university.status !== "user_stated_none") {
+      state.fields.university = { value: latestFacts.universityHint, status: "known", lastUpdatedTurn: state.turnCount };
+    }
+    if (latestFacts.agentHint && !negations.noAgent && state.fields.agent.status !== "user_stated_none") {
+      state.fields.agent = { value: latestFacts.agentHint, status: "known", lastUpdatedTurn: state.turnCount };
+    }
+    if (latestFacts.scholarshipHint && !negations.noScholarship && state.fields.scholarship.status !== "user_stated_none") {
+      state.fields.scholarship = { value: latestFacts.scholarshipHint, status: "known", lastUpdatedTurn: state.turnCount };
+    }
+    if (latestFacts.paymentAmountPkr !== null) {
+      state.fields.paymentAmountPkr = {
+        value: latestFacts.paymentAmountPkr,
+        status: "known",
+        lastUpdatedTurn: state.turnCount,
+      };
+      if (latestFacts.paymentAmountDisplay) {
+        state.fields.paymentAmountDisplay = {
+          value: latestFacts.paymentAmountDisplay,
+          status: "known",
+          lastUpdatedTurn: state.turnCount,
+        };
+      }
+    }
+    if (latestFacts.paymentPurpose) {
+      state.fields.paymentPurpose = { value: latestFacts.paymentPurpose, status: "known", lastUpdatedTurn: state.turnCount };
+    }
+    if (latestFacts.recipientType !== "unknown") {
+      state.fields.recipientType = { value: latestFacts.recipientType, status: "known", lastUpdatedTurn: state.turnCount };
+    }
+    if ((input.attachments?.length ?? 0) > 0) {
+      state.fields.hasEvidence = true;
+    }
+  }
+
+  // 5. If user answered the currently active question, mark it answered
+  if (state.activeQuestionTopic) {
+    const topicField = getFieldForTopic(state.activeQuestionTopic);
+    const field =
+      topicField && topicField !== "hasEvidence"
+        ? (state.fields[topicField] as import("@/server/engine/state").FieldState<any>)
+        : null;
+    if (field && (field.status === "known" || field.status === "user_stated_none" || field.status === "unknown_by_user")) {
+      for (const q of state.questionHistory) {
+        if (q.topic === state.activeQuestionTopic && q.status === "pending") {
+          q.status = "answered";
+        }
+      }
+      state.activeQuestionTopic = null;
+    }
+  }
+
   const data = await loadVerificationData();
 
   const evidenceCount =
     (input.attachments?.length ?? 0) +
     priorMessages.reduce((total, message) => total + (message.attachments?.length ?? 0), 0);
+
+  const qAns = detectAndAnswerQuestion(studentText, language);
+  const studentQuestionAnswer = qAns.hasQuestion ? qAns.answer : null;
 
   const assessment = runAssessment({
     facts,
@@ -77,6 +224,10 @@ export async function runInvestigationTurn(input: TurnInput): Promise<TurnOutput
     explicitDegree: input.explicitDegree ?? record.context.degree_level ?? null,
     explicitFunding: input.explicitFunding ?? record.context.funding_type ?? null,
     evidenceCount,
+    state,
+    frustrationApology,
+    correctionNote,
+    studentQuestionAnswer,
   });
 
   // 1. Knowledge Base RAG retrieval
@@ -140,9 +291,20 @@ export async function runInvestigationTurn(input: TurnInput): Promise<TurnOutput
     }
   }
 
+  const systemGoal = [
+    "You are RaastaAI, a calm, respectful, objective, and supportive study-abroad safety investigator for Pakistani students.",
+    "CRITICAL CONVERSATIONAL RULES:",
+    "1. NEVER argue, scold, provoke, or ragebait the student under any circumstance.",
+    "2. NEVER repeat a question or ask for information the student already stated, negated, or clarified.",
+    "3. ASK AT MOST ONE SINGLE QUESTION if clarification is needed. If the draft contains no question, do NOT introduce any question.",
+    "4. If the student expressed frustration or corrected a detail, apologize briefly and calmly, acknowledge their answer, and proceed with the assessment.",
+    "5. Keep the exact same language as the student (English, Urdu, or Roman Urdu).",
+    "6. Do not contradict the structured investigation facts, warning signals, verdicts, or risk level.",
+    "7. ANSWER THE STUDENT'S QUESTION: If the student asked any question, query, or asked for advice (e.g. visa guarantees, scholarship costs/fees, direct portals, IELTS, embassy slots, or consultant trustworthiness), provide a direct, clear, and reassuring answer in the opening portion of the reply before presenting the structured findings.",
+  ].join(" ");
+
   const replyText = await maybeEnrichReply({
-    systemGoal:
-      "Reply as RaastaAI, the study-abroad safety investigator for Pakistani students. Never accuse anyone of fraud; present verified / unverifiable / conflicting information, warning signals and a next verification step. Keep the same language as the student (English, Urdu or Roman Urdu).",
+    systemGoal,
     studentText,
     draft: assessment.replyText,
     structured: assessment.result,
@@ -170,6 +332,8 @@ export async function runInvestigationTurn(input: TurnInput): Promise<TurnOutput
     .filter(Boolean)
     .join(" — ");
 
+  const askedQuestionsList = (state.questionHistory ?? []).map((q) => q.questionText);
+
   await updateInvestigation(input.investigationId, {
     language,
     status: assessment.phase,
@@ -183,6 +347,8 @@ export async function runInvestigationTurn(input: TurnInput): Promise<TurnOutput
     overallRisk: assessment.result.overall_risk,
     summary: assessment.result.summary,
     latestResult: assessment.result,
+    askedQuestions: askedQuestionsList,
+    investigationState: state,
     ...(titleParts.length > 0 ? { title: titleParts } : {}),
   });
 

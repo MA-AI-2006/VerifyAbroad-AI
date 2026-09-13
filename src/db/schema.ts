@@ -117,6 +117,8 @@ export const investigations = pgTable("investigations", {
   overallRisk: text("overall_risk").notNull().default("pending_more_info"),
   summary: text("summary"),
   latestResult: jsonb("latest_result"),
+  askedQuestions: jsonb("asked_questions").$type<string[]>().notNull().default([]),
+  investigationState: jsonb("investigation_state"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

@@ -314,6 +314,8 @@ export async function updateInvestigation(
     overallRisk: string;
     summary: string | null;
     latestResult: unknown;
+    askedQuestions: string[];
+    investigationState: unknown;
   }>,
 ) {
   await db

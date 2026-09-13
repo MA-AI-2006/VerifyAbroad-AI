@@ -230,6 +230,7 @@ export interface InvestigationResult {
   sanctions_screening?: SanctionsFinding | null;
   live_intelligence?: LiveIntelligenceFinding | null;
   knowledge_citations?: KnowledgeCitation[];
+  investigation_state?: any;
   generated_at: string;
 }
 

@@ -73,7 +73,8 @@ export default async function ConsultantsPage() {
       <div className="mt-8">
         <DirectoryExplorer
           items={items}
-          searchPlaceholder="Search a consultant or company, e.g. Fatima Sheikh, EduWay"
+          category="consultant"
+          searchPlaceholder="Search a consultant or company, e.g. Fatima Sheikh, EduWay, IDP Education"
           emptyMessage="No matching consultant or company record. That means affiliation could not be verified here — ask the university's admissions office in writing."
         />
       </div>

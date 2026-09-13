@@ -60,7 +60,8 @@ export default async function UniversitiesPage() {
       <div className="mt-8">
         <DirectoryExplorer
           items={items}
-          searchPlaceholder="Search a university, e.g. Munich, Toronto, Manchester"
+          category="university"
+          searchPlaceholder="Search a university, e.g. Munich, Toronto, Manchester, Harvard, Oxford"
           emptyMessage="No university in the dataset matches that search. That is not a verdict — bring it to the investigator and we will check what we can."
         />
       </div>

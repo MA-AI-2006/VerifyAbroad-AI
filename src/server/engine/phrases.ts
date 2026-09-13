@@ -215,6 +215,21 @@ const P: Record<string, Entry> = {
     urdu: "کسی بھی ایک حصے (یونیورسٹی، اسکالرشپ، ایجنٹ یا ادائیگی) کے بارے میں پوچھیں، ہم مزید جانچیں گے۔",
     roman_urdu: "Kisi bhi ek hisay (university, scholarship, agent ya payment) ke baare mein poochhiye, hum aage check karenge.",
   },
+  apology_frustration: {
+    english: "I apologize for repeating that. Based on everything you've shared so far, here is my direct assessment:",
+    urdu: "بار بار پوچھنے کے لیے معذرت۔ آپ کی دی گئی تفصیلات کی بنیاد پر میرا تجزیہ یہ ہے:",
+    roman_urdu: "Baar baar poochne ke liye maazrat chahta hoon. Jo details aap ne share ki hain, unki bunyaad par mera direct assessment yeh hai:",
+  },
+  correction_acknowledged: {
+    english: "Understood — I've updated the details accordingly.",
+    urdu: "سمجھ گیا — میں نے تفصیلات اپ ڈیٹ کر دی ہیں۔",
+    roman_urdu: "Samajh gaya — maine details update kar di hain.",
+  },
+  ask_single_prefix: {
+    english: "To help verify this, could you clarify one detail:",
+    urdu: "اس کی تصدیق کے لیے، کیا آپ ایک بات واضح کر سکتے ہیں:",
+    roman_urdu: "Iski verification ke liye, kya aap aik baat clear kar sakte hain:",
+  },
 };
 
 export function t(key: keyof typeof P, language: Language): string {

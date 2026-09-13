@@ -65,7 +65,8 @@ export default async function ScholarshipsPage() {
       <div className="mt-8">
         <DirectoryExplorer
           items={items}
-          searchPlaceholder="Search a scholarship, e.g. DAAD, Chevening, Fulbright"
+          category="scholarship"
+          searchPlaceholder="Search a scholarship, e.g. DAAD, Chevening, Fulbright, MEXT, Rhodes"
           emptyMessage="No scholarship in the dataset matches that name. Confirm the exact name with the provider before acting on any claim."
         />
       </div>

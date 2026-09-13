@@ -47,6 +47,16 @@ interface EnrichInput {
   structured: InvestigationResult;
 }
 
+const ENRICH_RULES = `
+Rules for rewriting:
+1. Tone: Calm, respectful, objective, empathetic. NEVER argue, scold, provoke, or ragebait.
+2. Direct Question Answering (CRITICAL): If the student asked ANY question, query, or expressed doubt (e.g. about visa guarantees, scholarship fees, application procedures, IELTS, bank statements, embassy appointments, or consultant trustworthiness), you MUST answer their question directly, thoroughly, and helpfully in the opening part of your reply using accurate real-world regulatory facts. Never ignore or evade the student's question!
+3. Single-question rule: If clarification is needed, ask AT MOST ONE single question at the end. If the draft contains no question, do NOT introduce any question. Never list multiple questions.
+4. Anti-repetition: NEVER re-ask for any information already present or marked unknown/negated in the structured output.
+5. Keep all verification verdicts, risk signals, risk level, and next verification steps accurate to the structured data.
+6. Match the student's language (English, Urdu, or Roman Urdu).
+`;
+
 /**
  * Rewrites the deterministic draft into a more natural reply when an LLM key is
  * available. Any failure returns the draft unchanged, so the product never
@@ -56,9 +66,9 @@ export async function maybeEnrichReply(input: EnrichInput): Promise<string> {
   const ai = getGenAi();
   if (ai) {
     try {
-      const prompt = `Student message: ${input.studentText}\n\nStructured investigation output (must not be contradicted):\n${JSON.stringify(
+      const prompt = `Student message: ${input.studentText}\n\n${ENRICH_RULES}\nStructured investigation output:\n${JSON.stringify(
         input.structured,
-      )}\n\nDeterministic draft reply (rewrite for clarity, empathetic advisor tone, keep all facts, warning signals, verdicts, risk level and next verification step):\n${input.draft}`;
+      )}\n\nDeterministic draft reply (rewrite naturally adhering strictly to the rules above):\n${input.draft}`;
 
       const configuredModel = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
       let response: any = null;
@@ -122,12 +132,12 @@ export async function maybeEnrichReply(input: EnrichInput): Promise<string> {
           model: groqModel,
           temperature: 0.3,
           messages: [
-            { role: "system", content: input.systemGoal },
+            { role: "system", content: `${input.systemGoal}\n${ENRICH_RULES}` },
             {
               role: "user",
-              content: `Student message: ${input.studentText}\n\nStructured output (must not be contradicted): ${JSON.stringify(
+              content: `Student message: ${input.studentText}\n\nStructured output: ${JSON.stringify(
                 input.structured,
-              )}\n\nRewrite this draft for clarity and empathetic advisor tone without changing any fact, verdict, risk level or next step:\n${input.draft}`,
+              )}\n\nDraft:\n${input.draft}`,
             },
           ],
         }),
@@ -159,12 +169,12 @@ export async function maybeEnrichReply(input: EnrichInput): Promise<string> {
           model: "gpt-4o-mini",
           temperature: 0.3,
           messages: [
-            { role: "system", content: input.systemGoal },
+            { role: "system", content: `${input.systemGoal}\n${ENRICH_RULES}` },
             {
               role: "user",
-              content: `Student message: ${input.studentText}\n\nStructured output (must not be contradicted): ${JSON.stringify(
+              content: `Student message: ${input.studentText}\n\nStructured output: ${JSON.stringify(
                 input.structured,
-              )}\n\nRewrite this draft for clarity and tone without changing any fact, verdict, risk level or next step:\n${input.draft}`,
+              )}\n\nDraft:\n${input.draft}`,
             },
           ],
         }),

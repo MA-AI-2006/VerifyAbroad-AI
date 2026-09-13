@@ -11,6 +11,9 @@ export interface ExtractedFacts {
   scholarshipHint: string | null;
   agentHint: string | null;
   agentInvolved: boolean;
+  userStatedNoAgent?: boolean;
+  userStatedNoScholarship?: boolean;
+  userStatedNoUniversity?: boolean;
   claimsOfficialRepresentation: boolean | null;
   fundingType: FundingType | null;
   mentionsScholarship: boolean;
@@ -205,6 +208,45 @@ function titleCase(value: string): string {
     .split(" ")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
+}
+
+function detectUniversityHint(raw: string, norm: string): string | null {
+  // Pattern 1: Acronyms
+  const acronymMatch = raw.match(/\b(TUM|LMU|RWTH|UCL|MIT|NUS|NTU|LUMS|NUST|FAST|IBA|TUB|KIT)\b/i);
+  if (acronymMatch) return acronymMatch[1].toUpperCase();
+
+  // Pattern 2: Explicit prefix: "university is X", "university: X"
+  const prefixMatch = raw.match(/(?:university|college|institute|hochschule)\s*(?:is|called|named|ka naam|:)\s*([A-Za-z0-9\s&'-]{3,40}?)(?=[,\.\n]|$|and|in\s+[A-Z])/i);
+  if (prefixMatch && prefixMatch[1].trim().length > 2) return prefixMatch[1].trim();
+
+  // Pattern 3: Proper noun university: e.g. "Technical University of Munich", "Oxford University"
+  const uniNameMatch = raw.match(/\b([A-Z][a-zA-Z\s&'-]{2,35}\s+(?:University|College|Institute|Hochschule))\b/);
+  if (uniNameMatch) return uniNameMatch[1].trim();
+
+  const uniOfMatch = raw.match(/\b(University\s+of\s+[A-Z][a-zA-Z\s&'-]{2,30})\b/);
+  if (uniOfMatch) return uniOfMatch[1].trim();
+
+  return null;
+}
+
+function detectAgentHint(raw: string, norm: string): string | null {
+  const prefixMatch = raw.match(/(?:agent|consultant|agency|counsellor|counselor)\s*(?:is|called|named|ka naam|:)\s*([A-Za-z0-9\s&'-]{3,40}?)(?=[,\.\n]|$|who|which|and)/i);
+  if (prefixMatch && prefixMatch[1].trim().length > 2) return prefixMatch[1].trim();
+
+  const consultancyMatch = raw.match(/\b([A-Z][a-zA-Z0-9\s&'-]{2,35}\s+(?:Consultants?|Consultancy|Education|Overseas|Advisors?|Services|Agency))\b/);
+  if (consultancyMatch) return consultancyMatch[1].trim();
+
+  return null;
+}
+
+function detectScholarshipHint(raw: string, norm: string): string | null {
+  const prefixMatch = raw.match(/(?:scholarship|funding)\s*(?:is|called|named|ka naam|:)\s*([A-Za-z0-9\s&'-]{3,40}?)(?=[,\.\n]|$|which|and)/i);
+  if (prefixMatch && prefixMatch[1].trim().length > 2) return prefixMatch[1].trim();
+
+  const schMatch = raw.match(/\b([A-Z][a-zA-Z0-9\s&'-]{2,35}\s+(?:Scholarship|Award|Bursary|Fellowship))\b/);
+  if (schMatch) return schMatch[1].trim();
+
+  return null;
 }
 
 const FUNDING_PATTERNS: { type: FundingType; tokens: string[] }[] = [
@@ -412,7 +454,28 @@ export function extractFacts(...texts: string[]): ExtractedFacts {
     "immigration consultant",
     "representative",
   ];
-  const agentInvolved = agentTokens.some((token) => norm.includes(token));
+  const userStatedNoAgent =
+    /(no|without|dont have|not having|don't have|zero|none|no any)\s*(an?\s*)?(agent|consultant|agency|counselor)|(agent|consultant)\s*(nahi|nahin|not|nai|none)|(khud|self|direct)\s*(hi\s*)?apply/i.test(
+      norm,
+    );
+
+  const userStatedNoScholarship =
+    /(no|without|dont have|not having|don't have|no any)\s*(scholarship|funding|grant)|(scholarship|funding)\s*(nahi|nahin|not|nai|none)|self\s*funded/i.test(
+      norm,
+    );
+
+  const userStatedNoUniversity =
+    /(haven'?t (decided|picked|chosen)|not sure about university|no university (yet|selected)|university (nahi|nahin|pata nahi))/i.test(
+      norm,
+    );
+
+  const agentInvolved = !userStatedNoAgent && agentTokens.some((token) => norm.includes(token));
+  const mentionsScholarship = !userStatedNoScholarship && /scholarship|funding|funded|stipend|bursary|grant/.test(norm);
+  const mentionsUniversity = !userStatedNoUniversity && /university|campus|institute|college|hochschule|uni\b/.test(norm);
+
+  const universityHint = detectUniversityHint(raw, norm);
+  const agentHint = detectAgentHint(raw, norm);
+  const scholarshipHint = detectScholarshipHint(raw, norm);
 
   return {
     language: detectLanguage(raw),
@@ -420,10 +483,13 @@ export function extractFacts(...texts: string[]): ExtractedFacts {
     degreeLevel: detectDegreeLevel(norm),
     programName: detectProgram(norm).name,
     programHint: detectProgram(norm).hint,
-    universityHint: null,
-    scholarshipHint: null,
-    agentHint: null,
+    universityHint,
+    scholarshipHint,
+    agentHint,
     agentInvolved,
+    userStatedNoAgent,
+    userStatedNoScholarship,
+    userStatedNoUniversity,
     claimsOfficialRepresentation:
       /(official|authorised|authorized|approved)\s*(representative|agent|partner|recruiter)|represent(s)?\s*(the|our)\s*university|university\s*(ka|ki)\s*(official\s*)?agent|authorized\s*to\s*(recruit|admit)/.test(
         norm,
@@ -431,8 +497,8 @@ export function extractFacts(...texts: string[]): ExtractedFacts {
         ? true
         : null,
     fundingType: detectFundingType(norm),
-    mentionsScholarship: /scholarship|scholarship|funding|funded|stipend|bursary|grant/.test(norm),
-    mentionsUniversity: /university|university|campus|institute|college|hochschule|uni\b/.test(norm),
+    mentionsScholarship,
+    mentionsUniversity,
     mentionsVisa: /visa|visa|study permit|study permit/.test(norm),
     hasOfferLetter: /(offer letter|admission letter|offer letter|acceptance letter|conditional offer|cas letter)/.test(norm),
     hasScholarshipLetter: /(scholarship letter|scholarship award|scholarship letter|funding letter)/.test(norm),

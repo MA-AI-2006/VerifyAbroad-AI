@@ -19,6 +19,7 @@ import type {
 } from "@/types";
 import { formatPkr, type ExtractedFacts } from "@/server/engine/extract";
 import { t } from "@/server/engine/phrases";
+import type { PersistentInvestigationState, QuestionTopic } from "@/server/engine/state";
 import {
   matchAgent,
   matchChannels,
@@ -59,6 +60,10 @@ export interface AssessmentContext {
   explicitDegree: DegreeLevel | null;
   explicitFunding: FundingType | null;
   evidenceCount: number;
+  state?: PersistentInvestigationState;
+  frustrationApology?: boolean;
+  correctionNote?: string | null;
+  studentQuestionAnswer?: string | null;
 }
 
 export interface AssessmentOutput {
@@ -66,6 +71,7 @@ export interface AssessmentOutput {
   replyText: string;
   stillNeed: string[];
   phase: "gathering" | "assessed";
+  state?: PersistentInvestigationState;
   extracted: {
     country: string | null;
     degreeLevel: DegreeLevel | null;
@@ -127,6 +133,12 @@ export function runAssessment(ctx: AssessmentContext): AssessmentOutput {
 
   /* ---------------------------------------------------------------- university */
   let university: UniversityFinding | null = null;
+  const uniCandidate =
+    ctx.suppliedNames?.university ??
+    facts.universityHint ??
+    (ctx.state?.fields.university.status === "known" ? ctx.state.fields.university.value : null) ??
+    null;
+
   if (uniMatch) {
     const row = uniMatch.row;
     const hasSite = Boolean(row.officialWebsite);
@@ -161,6 +173,25 @@ export function runAssessment(ctx: AssessmentContext): AssessmentOutput {
             unknown("No application portal on record"),
             warn("Any claim tied to this institution needs independent verification"),
           ],
+    };
+  } else if (
+    !facts.userStatedNoUniversity &&
+    ctx.state?.fields.university.status !== "user_stated_none" &&
+    uniCandidate
+  ) {
+    university = {
+      name: uniCandidate,
+      country,
+      status: "needs_verification",
+      official_website: null,
+      application_portal: null,
+      program_types: [],
+      accepts_direct_applications: null,
+      notes: `"${uniCandidate}" was not matched to a verified record in our dataset. Confirm its accreditation and official application portal directly.`,
+      checks: [
+        warn(`Institution "${uniCandidate}" is unverified in our dataset`),
+        ok("Direct portal confirmation recommended"),
+      ],
     };
   }
 
@@ -224,7 +255,18 @@ export function runAssessment(ctx: AssessmentContext): AssessmentOutput {
   const paymentIsForScholarship =
     Boolean(facts.paymentPurpose && facts.paymentPurpose.toLowerCase().includes("scholarship")) ||
     (facts.mentionsScholarship && facts.paymentAmountPkr !== null);
-  if (facts.mentionsScholarship || schMatch) {
+
+  const schCandidate =
+    ctx.suppliedNames?.scholarship ??
+    facts.scholarshipHint ??
+    (ctx.state?.fields.scholarship.status === "known" ? ctx.state.fields.scholarship.value : null) ??
+    null;
+
+  if (
+    !facts.userStatedNoScholarship &&
+    ctx.state?.fields.scholarship.status !== "user_stated_none" &&
+    (facts.mentionsScholarship || schMatch || schCandidate)
+  ) {
     if (schMatch) {
       const row = schMatch.row;
       scholarship = {
@@ -251,9 +293,8 @@ export function runAssessment(ctx: AssessmentContext): AssessmentOutput {
         ],
       };
     } else {
-      const suppliedScholarship = ctx.suppliedNames?.scholarship ?? null;
       scholarship = {
-        name: suppliedScholarship,
+        name: schCandidate,
         provider: null,
         country,
         eligible_levels: degreeLevel ? [degreeLevel] : [],
@@ -262,14 +303,14 @@ export function runAssessment(ctx: AssessmentContext): AssessmentOutput {
         official_website: null,
         application_portal: null,
         status: "needs_verification",
-        notes: suppliedScholarship
-          ? "This scholarship name is not in our verification dataset. It may still be genuine — confirm it directly with the provider."
-          : "No scholarship name was provided, so it could not be matched against our dataset.",
+        notes: schCandidate
+          ? `Scholarship "${schCandidate}" is not in our verification dataset. Please confirm with the official provider.`
+          : "A scholarship was mentioned, but no provider name was found.",
         checks: [
-          suppliedScholarship
-            ? warn(`No record found for the scholarship named "${suppliedScholarship}"`)
+          schCandidate
+            ? warn(`No record found for the scholarship named "${schCandidate}"`)
             : unknown("Scholarship name not provided"),
-          warn("No official scholarship reference supplied"),
+          warn("Official scholarship terms need direct verification"),
           facts.guarantees.scholarship
             ? fail("A guaranteed scholarship outcome was claimed — no provider can guarantee this")
             : unknown("No guarantee claim made"),
@@ -280,7 +321,17 @@ export function runAssessment(ctx: AssessmentContext): AssessmentOutput {
 
   /* --------------------------------------------------------------------- agent */
   let agent: AgentFinding | null = null;
-  if (agentMatch || facts.agentInvolved) {
+  const agentCandidate =
+    ctx.suppliedNames?.agent ??
+    facts.agentHint ??
+    (ctx.state?.fields.agent.status === "known" ? ctx.state.fields.agent.value : null) ??
+    null;
+
+  if (
+    !facts.userStatedNoAgent &&
+    ctx.state?.fields.agent.status !== "user_stated_none" &&
+    (agentMatch || facts.agentInvolved || agentCandidate)
+  ) {
     if (agentMatch) {
       const row = agentMatch.row;
       const status: VerificationStatus =
@@ -315,24 +366,23 @@ export function runAssessment(ctx: AssessmentContext): AssessmentOutput {
         ],
       };
     } else {
-      const suppliedAgent = ctx.suppliedNames?.agent ?? null;
       agent = {
-        name: suppliedAgent,
-        company: null,
+        name: agentCandidate,
+        company: agentCandidate,
         city: null,
         claimed_universities: [],
         contact_info: null,
         status: "needs_verification",
         claims_official_representation: facts.claimsOfficialRepresentation,
         verification_date: null,
-        notes: suppliedAgent
-          ? "No matching consultant or company record was found in our dataset. This is not an accusation — it means the affiliation could not be verified here."
-          : "A consultant or agent was mentioned, but no name or company was provided.",
+        notes: agentCandidate
+          ? `Consultant "${agentCandidate}" is not registered in our verified partner directory. Official partner authorization must be confirmed directly with the university.`
+          : "A consultant or agent was mentioned, but no registered company or partner was verified.",
         checks: [
-          suppliedAgent
-            ? warn(`No matching record for "${suppliedAgent}" in our dataset`)
-            : unknown("Consultant name and company not provided"),
-          warn("Affiliation could not be checked without a name"),
+          agentCandidate
+            ? warn(`No matching record for "${agentCandidate}" in our dataset`)
+            : unknown("Consultant name and company unconfirmed"),
+          warn("Authorization must be independently confirmed with university"),
           facts.claimsOfficialRepresentation === true
             ? fail("Claim of official representation could not be confirmed")
             : unknown("No claim of official representation made"),
@@ -479,14 +529,24 @@ export function runAssessment(ctx: AssessmentContext): AssessmentOutput {
         "We could not find a matching agent or company record in our dataset. This is not proof of fraud, but it means affiliation and registration are unverified.",
     });
   }
-  if (facts.agentInvolved && !agentMatch) {
-    push({
-      category: "agent",
-      severity: "medium",
-      title: "Consultant identity unknown",
-      explanation:
-        "A consultant is involved but their name and company were not provided, so nothing about them could be checked.",
-    });
+  if (facts.agentInvolved && !agentMatch && !facts.userStatedNoAgent && ctx.state?.fields.agent.status !== "user_stated_none") {
+    if (agent?.name) {
+      push({
+        category: "agent",
+        severity: "medium",
+        title: "Consultant unverified in our dataset",
+        explanation:
+          `Consultant "${agent.name}" could not be matched to our verified recruitment partners dataset. Direct verification with the university admissions office is recommended.`,
+      });
+    } else {
+      push({
+        category: "agent",
+        severity: "medium",
+        title: "Consultant details unconfirmed",
+        explanation:
+          "A consultant was mentioned, but could not be matched to our verified directory. Confirm authorization directly with the institution.",
+      });
+    }
   }
   if (university?.status === "not_found") {
     push({
@@ -497,14 +557,24 @@ export function runAssessment(ctx: AssessmentContext): AssessmentOutput {
         "We could not match this institution to a verified record. Confirm it exists as an accredited, degree-awarding institution using the official channel for that country.",
     });
   }
-  if (facts.mentionsUniversity && !uniMatch) {
-    push({
-      category: "university",
-      severity: "medium",
-      title: "University name not provided or unclear",
-      explanation:
-        "A university was mentioned, but the name could not be matched to our dataset. Verification is not possible without the exact name.",
-    });
+  if (facts.mentionsUniversity && !uniMatch && !facts.userStatedNoUniversity && ctx.state?.fields.university.status !== "user_stated_none") {
+    if (university?.name) {
+      push({
+        category: "university",
+        severity: "medium",
+        title: "University not in verified dataset",
+        explanation:
+          `Institution "${university.name}" could not be matched to our curated verification dataset. Confirm accreditation directly on official government education portals.`,
+      });
+    } else {
+      push({
+        category: "university",
+        severity: "medium",
+        title: "University name unconfirmed",
+        explanation:
+          "A university was mentioned, but could not be matched to our dataset. Verification requires independent checking on official higher education portals.",
+      });
+    }
   }
   if (facts.avoidOfficialChannels) {
     push({
@@ -614,19 +684,32 @@ export function runAssessment(ctx: AssessmentContext): AssessmentOutput {
   }
 
   /* ---------------------------------------------------------------- risk level */
+  const turnCount = ctx.state?.turnCount ?? 0;
+  const frustration = ctx.state?.frustrationDetected ?? false;
+
   const anchors = [
-    Boolean(uniMatch),
-    Boolean(agentMatch),
+    Boolean(uniMatch) || Boolean(university),
+    Boolean(agentMatch) || (facts.agentInvolved && Boolean(agent)),
     facts.paymentAmountPkr !== null,
-    Boolean(schMatch),
+    Boolean(schMatch) || (facts.mentionsScholarship && Boolean(scholarship)),
     facts.agentInvolved,
     facts.mentionsScholarship,
     facts.mentionsUniversity,
+    facts.country !== null,
+    facts.degreeLevel !== null,
+    facts.programName !== null,
+    ctx.evidenceCount > 0,
   ].filter(Boolean).length;
 
   const hasGuarantee =
     facts.guarantees.admission || facts.guarantees.visa || facts.guarantees.scholarship;
-  const canAssess = anchors >= 2 || (anchors >= 1 && (hasGuarantee || facts.paymentAmountPkr !== null));
+
+  // Transition to assessment if user is frustrated, turn >= 2, or sufficient signals exist
+  const canAssess =
+    frustration ||
+    turnCount >= 2 ||
+    anchors >= 2 ||
+    (anchors >= 1 && (hasGuarantee || facts.paymentAmountPkr !== null || turnCount >= 1));
 
   const highCount = signals.filter((s) => s.severity === "high").length;
   const mediumCount = signals.filter((s) => s.severity === "medium").length;
@@ -642,16 +725,80 @@ export function runAssessment(ctx: AssessmentContext): AssessmentOutput {
     overallRisk = "low";
   }
 
-  /* -------------------------------------------------------------- still needed */
+  /* -------------------------------------------------------------- still needed / single question */
   const stillNeed: string[] = [];
-  if (!uniMatch && !facts.mentionsUniversity) stillNeed.push(t("q_university", language));
-  if (!uniMatch && facts.mentionsUniversity) stillNeed.push(t("q_university", language));
-  if (facts.agentInvolved && !agentMatch) stillNeed.push(t("q_agent", language));
-  if (facts.mentionsScholarship && !schMatch) stillNeed.push(t("q_scholarship", language));
-  if (paymentTouched && !facts.paymentPurpose) stillNeed.push(t("q_payment_purpose", language));
-  if (paymentTouched && facts.recipientType === "unknown") stillNeed.push(t("q_recipient", language));
-  if (!degreeLevel) stillNeed.push(t("q_degree", language));
-  if (ctx.evidenceCount === 0) stillNeed.push(t("q_evidence", language));
+
+  if (!canAssess && !frustration) {
+    const candidateQuestions: { topic: QuestionTopic; text: string }[] = [];
+
+    const uniKnown =
+      Boolean(uniMatch) ||
+      Boolean(university?.name) ||
+      facts.userStatedNoUniversity ||
+      ctx.state?.fields.university.status === "user_stated_none" ||
+      ctx.state?.fields.university.status === "unknown_by_user";
+    if (!uniKnown) {
+      candidateQuestions.push({ topic: "university", text: t("q_university", language) });
+    }
+
+    const degreeKnown =
+      Boolean(degreeLevel) ||
+      ctx.state?.fields.degreeLevel.status === "unknown_by_user";
+    if (!degreeKnown) {
+      candidateQuestions.push({ topic: "degree_level", text: t("q_degree", language) });
+    }
+
+    const agentKnown =
+      !facts.agentInvolved ||
+      facts.userStatedNoAgent ||
+      Boolean(agentMatch) ||
+      Boolean(agent?.name) ||
+      ctx.state?.fields.agent.status === "user_stated_none" ||
+      ctx.state?.fields.agent.status === "unknown_by_user";
+    if (!agentKnown) {
+      candidateQuestions.push({ topic: "agent", text: t("q_agent", language) });
+    }
+
+    const purposeKnown =
+      !paymentTouched ||
+      Boolean(facts.paymentPurpose) ||
+      ctx.state?.fields.paymentPurpose.status === "unknown_by_user";
+    if (!purposeKnown) {
+      candidateQuestions.push({ topic: "payment_purpose", text: t("q_payment_purpose", language) });
+    }
+
+    const recipientKnown =
+      !paymentTouched ||
+      facts.recipientType !== "unknown" ||
+      ctx.state?.fields.recipientType.status === "unknown_by_user";
+    if (!recipientKnown) {
+      candidateQuestions.push({ topic: "recipient_type", text: t("q_recipient", language) });
+    }
+
+    const evidenceKnown = ctx.evidenceCount > 0 || Boolean(ctx.state?.fields.hasEvidence);
+    if (!evidenceKnown && (hasGuarantee || paymentTouched)) {
+      candidateQuestions.push({ topic: "evidence", text: t("q_evidence", language) });
+    }
+
+    // Filter out ANY question whose topic was ALREADY asked
+    const askedTopics = new Set((ctx.state?.questionHistory ?? []).map((q) => q.topic));
+    const eligible = candidateQuestions.filter((q) => !askedTopics.has(q.topic));
+
+    if (eligible.length > 0) {
+      // Pick AT MOST ONE question to avoid overwhelming the student
+      const selected = eligible[0];
+      stillNeed.push(selected.text);
+      if (ctx.state) {
+        ctx.state.questionHistory.push({
+          topic: selected.topic,
+          questionText: selected.text,
+          askedAtTurn: turnCount,
+          status: "pending",
+        });
+        ctx.state.activeQuestionTopic = selected.topic;
+      }
+    }
+  }
 
   /* ------------------------------------------------------------- official links */
   const officialSources: OfficialSource[] = [];
@@ -825,6 +972,10 @@ export function runAssessment(ctx: AssessmentContext): AssessmentOutput {
     generated_at: new Date().toISOString(),
   };
 
+  if (ctx.state) {
+    result.investigation_state = ctx.state;
+  }
+
   const replyText = canAssess
     ? buildAssessedReply({
         language,
@@ -837,14 +988,26 @@ export function runAssessment(ctx: AssessmentContext): AssessmentOutput {
         community: community
           ? { rating: community.rating, report_count: community.reportCount }
           : null,
+        frustrationApology: ctx.frustrationApology,
+        correctionNote: ctx.correctionNote,
+        directAnswer: ctx.studentQuestionAnswer,
       })
-    : buildGatheringReply({ language, facts, stillNeed, university });
+    : buildGatheringReply({
+        language,
+        facts,
+        stillNeed,
+        university,
+        frustrationApology: ctx.frustrationApology,
+        correctionNote: ctx.correctionNote,
+        directAnswer: ctx.studentQuestionAnswer,
+      });
 
   return {
     result,
     replyText,
-    stillNeed: canAssess ? result.still_need : stillNeed.slice(0, 4),
+    stillNeed: canAssess ? [] : stillNeed.slice(0, 1),
     phase: canAssess ? "assessed" : "gathering",
+    state: ctx.state,
     extracted: {
       country,
       degreeLevel,
@@ -866,9 +1029,26 @@ function buildAssessedReply(input: {
   agent: AgentFinding | null;
   payment: PaymentFinding | null;
   community: { rating: number | null; report_count: number | null } | null;
+  frustrationApology?: boolean;
+  correctionNote?: string | null;
+  directAnswer?: string | null;
 }): string {
-  const { language, result } = input;
+  const { language, result, frustrationApology, correctionNote, directAnswer } = input;
   const lines: string[] = [];
+
+  if (directAnswer) {
+    lines.push(directAnswer);
+    lines.push("");
+  }
+
+  if (frustrationApology) {
+    lines.push(t("apology_frustration", language));
+    lines.push("");
+  } else if (correctionNote) {
+    lines.push(t("correction_acknowledged", language));
+    lines.push("");
+  }
+
   lines.push(t("ack", language));
   lines.push("");
   lines.push(`${t("checked", language)}:`);
@@ -925,28 +1105,48 @@ function buildGatheringReply(input: {
   facts: ExtractedFacts;
   stillNeed: string[];
   university: UniversityFinding | null;
+  frustrationApology?: boolean;
+  correctionNote?: string | null;
+  directAnswer?: string | null;
 }): string {
-  const { language, facts, stillNeed } = input;
+  const { language, facts, stillNeed, university, frustrationApology, correctionNote, directAnswer } = input;
   const lines: string[] = [];
+
+  if (directAnswer) {
+    lines.push(directAnswer);
+    lines.push("");
+  }
+
+  if (frustrationApology) {
+    lines.push(t("apology_frustration", language));
+    lines.push("");
+  } else if (correctionNote) {
+    lines.push(t("correction_acknowledged", language));
+    lines.push("");
+  }
+
   const understood: string[] = [];
   if (facts.country) understood.push(facts.country);
   if (facts.degreeLevel) understood.push(facts.degreeLevel);
-  if (input.university) understood.push(input.university.name);
+  if (university?.name) understood.push(university.name);
   else if (facts.programName) understood.push(facts.programName);
   if (facts.agentInvolved) understood.push("consultant involved");
   if (facts.paymentAmountDisplay) understood.push(facts.paymentAmountDisplay);
-  if (facts.mentionsScholarship) understood.push("scholarship claimed");
+  if (facts.mentionsScholarship) understood.push("scholarship mentioned");
 
   if (understood.length > 0) {
     lines.push(`Noted: ${understood.join(" · ")}.`);
-  }
-  lines.push(t("summary_pending", language));
-  lines.push("");
-  if (stillNeed.length > 0) {
-    lines.push(t("ask_heading", language));
-    stillNeed.forEach((question, index) => lines.push(`${index + 1}. ${question}`));
     lines.push("");
   }
+
+  if (stillNeed.length > 0) {
+    lines.push(t("ask_single_prefix", language));
+    lines.push(stillNeed[0]);
+  } else {
+    lines.push(t("summary_pending", language));
+  }
+
+  lines.push("");
   lines.push(t("send_more", language));
   return lines.join("\n");
 }
