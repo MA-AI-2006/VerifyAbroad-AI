@@ -21,8 +21,7 @@ import type {
   StudentProfile,
 } from "@/types";
 import { demoAttachmentFromCase, demoCase, demoFollowUps } from "@/data/mock/demoCase";
-import { getStudentKey } from "./session";
-import * as backendClient from "./backend-client";
+import * as backendClient from "@/server/backend-client";
 
 const USE_BACKEND = Boolean(
   process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL
@@ -92,15 +91,23 @@ export const api = {
         return {
           investigation_id: result.investigation_id,
           investigation: {
-            id: parseInt(result.investigation_id),
-            messages: [],
+            id: String(result.investigation_id),
+            title: "Investigation",
+            language: input.language ?? "roman_urdu",
+            status: "gathering",
+            overall_risk: "pending_more_info",
             context: {},
+            messages: [],
+            latest_result: null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
           } as InvestigationRecord,
           first_turn: {
             assistantMessage: {
+              id: "msg-first",
               role: "assistant",
-              content: result.assistant_message,
-              timestamp: new Date().toISOString(),
+              text: result.assistant_message,
+              created_at: new Date().toISOString(),
             } as ChatMessage,
             result: null,
           },
@@ -130,13 +137,21 @@ export const api = {
         const result = await backendClient.investigations.get(id);
         return {
           investigation: {
-            id: parseInt(String(id)),
-            messages: result.messages.map((msg) => ({
-              role: msg.role,
-              content: msg.content,
-              timestamp: msg.timestamp,
+            id: String(id),
+            title: "Investigation",
+            language: "roman_urdu",
+            status: "gathering",
+            overall_risk: "pending_more_info",
+            messages: result.messages.map((msg, index) => ({
+              id: `msg-${index}`,
+              role: msg.role === "assistant" ? "assistant" : "student",
+              text: msg.content,
+              created_at: msg.timestamp,
             })),
-            context: result.structured_case,
+            context: result.structured_case as unknown as InvestigationRecord["context"],
+            latest_result: (result.results as unknown as InvestigationResult) ?? null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
           } as InvestigationRecord,
         };
       } catch (error) {
@@ -157,9 +172,10 @@ export const api = {
         });
         return {
           assistantMessage: {
+            id: `msg-${Date.now()}`,
             role: "assistant",
-            content: result.assistant_message,
-            timestamp: new Date().toISOString(),
+            text: result.assistant_message,
+            created_at: new Date().toISOString(),
           } as ChatMessage,
           result: null,
           mode: "external_backend" as const,
@@ -178,25 +194,6 @@ export const api = {
   },
 
   async listInvestigations() {
-    if (USE_BACKEND) {
-      try {
-        const studentKey = await getStudentKey();
-        const result = await backendClient.investigations.list(studentKey);
-        return {
-          investigations: result.investigations.map((inv) => ({
-            id: parseInt(inv.investigation_id),
-            messages: [],
-            context: inv.structured_case,
-            created_at: inv.created_at,
-          })) as InvestigationListItem[],
-        };
-      } catch (error) {
-        if (error instanceof backendClient.BackendError) {
-          throw new ApiError(error.message, error.status);
-        }
-        throw error;
-      }
-    }
     return request<{ investigations: InvestigationListItem[] }>("/investigations");
   },
 
@@ -239,16 +236,19 @@ export const api = {
           evidence_id: result.evidence_id,
           attachment: {
             id: result.evidence_id,
-            name: input.label ?? input.file.name,
-            type: input.file.type,
-            size: input.file.size,
+            kind: "document",
+            label: input.label ?? input.file.name,
+            mime: input.file.type,
+            size_bytes: input.file.size,
             url: "",
+            analysis_status: "analyzed",
           } as ChatAttachment,
           turn: {
             assistantMessage: {
+              id: `msg-ev-${Date.now()}`,
               role: "assistant",
-              content: result.message ?? "Evidence uploaded successfully",
-              timestamp: new Date().toISOString(),
+              text: result.message ?? "Evidence uploaded successfully",
+              created_at: new Date().toISOString(),
             } as ChatMessage,
             result: null,
           },
@@ -286,16 +286,18 @@ export const api = {
           evidence_id: result.evidence_id,
           attachment: {
             id: result.evidence_id,
-            name: input.label,
-            type: "text",
-            size: input.text.length,
+            kind: "pasted_text",
+            label: input.label,
+            size_bytes: input.text.length,
             url: "",
+            analysis_status: "analyzed",
           } as ChatAttachment,
           turn: {
             assistantMessage: {
+              id: `msg-ev-${Date.now()}`,
               role: "assistant",
-              content: result.message ?? "Evidence submitted successfully",
-              timestamp: new Date().toISOString(),
+              text: result.message ?? "Evidence submitted successfully",
+              created_at: new Date().toISOString(),
             } as ChatMessage,
             result: null,
           },
@@ -580,9 +582,10 @@ export const api = {
         return {
           query: result.query,
           citations: result.matches.map((m) => ({
-            title: m.pattern,
-            description: m.description,
+            document_title: m.pattern,
             source: "fraud_patterns",
+            snippet: m.description,
+            relevance_score: m.risk_contribution,
           })) as KnowledgeCitation[],
         };
       } catch (error) {

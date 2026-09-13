@@ -60,7 +60,7 @@ async function backendFetch<T>(
         };
         if (typeof payload.detail === 'string') {
           errorMessage = payload.detail;
-        } else if (payload.detail && typeof payload.detail === 'object' && 'msg' in payload.detail) {
+        } else if (payload.detail && typeof payload.detail === 'object' && 'msg' in payload.detail && typeof payload.detail.msg === 'string') {
           errorMessage = payload.detail.msg;
         } else if (payload.error) {
           errorMessage = payload.error;

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import {
   ClipboardList,
   FileText,
@@ -31,6 +32,8 @@ const TYPES: { value: EvidenceType; label: string; hint: string; icon: typeof Li
   { value: "link", label: "Paste Link / URL", hint: "Website or portal link", icon: Link2 },
   { value: "file", label: "Upload File / Photo", hint: "PDF, JPG, PNG up to 10MB", icon: Upload },
 ];
+
+const emptySubscribe = () => () => {};
 
 /**
  * The single reusable "Attach Evidence to Investigation" modal.
@@ -67,6 +70,11 @@ export function AttachEvidenceModal({
   );
   const fileInputRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const mounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false,
+  );
 
   const [prevOpen, setPrevOpen] = useState(open);
   if (open !== prevOpen) {
@@ -133,7 +141,7 @@ export function AttachEvidenceModal({
     };
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!open || !mounted) return null;
 
   const acceptFile = (incoming: File | null | undefined) => {
     if (!incoming) return;
@@ -168,7 +176,7 @@ export function AttachEvidenceModal({
     onClose();
   };
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6">
       <button
         type="button"
@@ -521,6 +529,7 @@ export function AttachEvidenceModal({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
