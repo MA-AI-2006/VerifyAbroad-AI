@@ -21,7 +21,12 @@ export async function POST(request: Request) {
       query: query.trim(),
     });
 
-    return NextResponse.json(result);
+    return NextResponse.json({
+      success: true,
+      item: result.item,
+      fromAi: result.fromAi,
+      ...result.item,
+    });
   } catch (err) {
     console.error("Error in AI lookup route:", err);
     return NextResponse.json(
@@ -52,7 +57,12 @@ export async function GET(request: Request) {
       query: query.trim(),
     });
 
-    return NextResponse.json(result);
+    return NextResponse.json({
+      success: true,
+      item: result.item,
+      fromAi: result.fromAi,
+      ...result.item,
+    });
   } catch (err) {
     return NextResponse.json(
       {

@@ -55,20 +55,30 @@ Provide a concise, factual verification summary covering:
 Be direct, clear, and cite official government or institutional findings.`;
 
   try {
-    const configuredModel = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
+    const configuredModel = process.env.GEMINI_MODEL ?? "gemini-3.8-flash";
+    let response: any = null;
 
-    // Call Gemini with Google Search tool enabled
-    const response = await ai.models.generateContent({
-      model: configuredModel,
-      contents: prompt,
-      config: {
-        tools: [{ googleSearch: {} }],
-        temperature: 0.2,
-      },
-    });
-    clearTimeout(timeout);
+    try {
+      // Call Gemini with Google Search tool enabled
+      response = await ai.models.generateContent({
+        model: configuredModel,
+        contents: prompt,
+        config: {
+          tools: [{ googleSearch: {} }],
+          temperature: 0.2,
+        },
+      });
+    } catch (groundingError) {
+      console.warn("Search grounding tool failed, falling back to direct model knowledge:", groundingError);
+      // Fall back to direct model knowledge if search tool hits quota or fails
+      response = await ai.models.generateContent({
+        model: configuredModel,
+        contents: prompt,
+        config: {
+          temperature: 0.2,
+        },
+      });
+    }
 
     const summary = response.text?.trim() ?? "No summary returned from Gemini Search.";
     const results: LiveSearchResult[] = [];

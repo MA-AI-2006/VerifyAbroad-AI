@@ -70,7 +70,7 @@ export async function maybeEnrichReply(input: EnrichInput): Promise<string> {
         input.structured,
       )}\n\nDeterministic draft reply (rewrite naturally adhering strictly to the rules above):\n${input.draft}`;
 
-      const configuredModel = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
+      const configuredModel = process.env.GEMINI_MODEL ?? "gemini-3.8-flash";
       let response: any = null;
       try {
         const generatePromise = ai.models.generateContent({
@@ -88,10 +88,34 @@ export async function maybeEnrichReply(input: EnrichInput): Promise<string> {
 
         response = await Promise.race([generatePromise, timeoutPromise]);
       } catch (modelError) {
-        if (configuredModel !== "gemini-2.5-flash") {
+        if (configuredModel !== "gemini-3.8-flash") {
           try {
             response = await ai.models.generateContent({
-              model: "gemini-2.5-flash",
+              model: "gemini-3.8-flash",
+              contents: prompt,
+              config: {
+                systemInstruction: input.systemGoal,
+                temperature: 0.3,
+              },
+            });
+          } catch {
+            try {
+              response = await ai.models.generateContent({
+                model: "gemini-flash-latest",
+                contents: prompt,
+                config: {
+                  systemInstruction: input.systemGoal,
+                  temperature: 0.3,
+                },
+              });
+            } catch {
+              throw modelError;
+            }
+          }
+        } else {
+          try {
+            response = await ai.models.generateContent({
+              model: "gemini-3.6-flash",
               contents: prompt,
               config: {
                 systemInstruction: input.systemGoal,
@@ -101,8 +125,6 @@ export async function maybeEnrichReply(input: EnrichInput): Promise<string> {
           } catch {
             throw modelError;
           }
-        } else {
-          throw modelError;
         }
       }
       if (response && response.text) {

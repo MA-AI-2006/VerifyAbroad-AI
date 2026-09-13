@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ExternalLink, Loader2, RefreshCw, Search, Sparkles } from "lucide-react";
 
@@ -31,6 +31,30 @@ const statusStyles: Record<DirectoryItem["status"], string> = {
 
 const TONES = ["grad-mint", "grad-lilac", "grad-sage", "grad-coral", "grad-panel"];
 
+function getCountryAliases(country?: string | null): string {
+  if (!country) return "";
+  const c = country.toLowerCase();
+  if (c.includes("united kingdom") || c.includes("uk") || c.includes("england") || c.includes("britain")) {
+    return "uk england britain british london scotland wales west yorkshire";
+  }
+  if (c.includes("united states") || c.includes("usa") || c.includes("us") || c.includes("america")) {
+    return "usa us america american united states";
+  }
+  if (c.includes("australia")) {
+    return "australia australian oz melbourne sydney brisbane perth";
+  }
+  if (c.includes("canada")) {
+    return "canada canadian toronto ontario vancouver";
+  }
+  if (c.includes("germany")) {
+    return "germany german deutschland munich berlin";
+  }
+  if (c.includes("pakistan")) {
+    return "pakistan pakistani lahore islamabad karachi peshawar rawalpindi";
+  }
+  return "";
+}
+
 export function DirectoryExplorer({
   items: initialItems,
   category = "university",
@@ -51,6 +75,7 @@ export function DirectoryExplorer({
   const [isSearchingAi, setIsSearchingAi] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [lastSearchedAiQuery, setLastSearchedAiQuery] = useState<string | null>(null);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   const allItems = useMemo(() => {
     // Put AI-grounded items first, avoiding duplicates with initial items
@@ -72,21 +97,33 @@ export function DirectoryExplorer({
     [allItems],
   );
 
-  const filtered = allItems.filter((item) => {
-    const haystack = [
-      item.title,
-      item.subtitle,
-      item.tags.join(" "),
-      item.meta.map((meta) => meta.value).join(" "),
-    ]
-      .join(" ")
-      .toLowerCase();
-    if (query.trim() && !haystack.includes(query.trim().toLowerCase())) return false;
-    if (country && item.country !== country) return false;
-    if (level && !item.levels.includes(level)) return false;
-    if (tag && !item.tags.includes(tag)) return false;
-    return true;
-  });
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return allItems.filter((item) => {
+      if (q) {
+        const countryAliases = getCountryAliases(item.country);
+        const haystack = [
+          item.title,
+          item.subtitle,
+          item.country ?? "",
+          countryAliases,
+          item.tags.join(" "),
+          item.levels.join(" "),
+          item.note ?? "",
+          item.meta.map((meta) => `${meta.label} ${meta.value}`).join(" "),
+        ]
+          .join(" ")
+          .toLowerCase();
+
+        if (!haystack.includes(q)) return false;
+      }
+
+      if (country && item.country !== country) return false;
+      if (level && !item.levels.includes(level)) return false;
+      if (tag && !item.tags.includes(tag)) return false;
+      return true;
+    });
+  }, [allItems, query, country, level, tag]);
 
   const chip = (active: boolean) =>
     cn(
@@ -96,50 +133,65 @@ export function DirectoryExplorer({
         : "border-white bg-white/70 text-ink-600 hover:bg-white",
     );
 
-  const handleAiLookup = async (searchTarget?: string) => {
-    const target = (searchTarget ?? query).trim();
-    if (!target) return;
+  const handleAiLookup = useCallback(
+    async (searchTarget?: string) => {
+      const target = (searchTarget ?? query).trim();
+      if (!target) return;
 
-    setIsSearchingAi(true);
-    setAiError(null);
-    setLastSearchedAiQuery(target);
+      setIsSearchingAi(true);
+      setAiError(null);
+      setLastSearchedAiQuery(target);
 
-    try {
-      const res = await fetch("/api/search/ai-lookup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ category, query: target }),
-      });
-
-      if (!res.ok) {
-        throw new Error(`AI lookup returned status ${res.status}`);
-      }
-
-      const data: DirectoryItem = await res.json();
-      if (data && data.title) {
-        setAiItems((prev) => {
-          const filteredPrev = prev.filter(
-            (p) => p.title.toLowerCase().trim() !== data.title.toLowerCase().trim(),
-          );
-          return [data, ...filteredPrev];
+      try {
+        const res = await fetch("/api/search/ai-lookup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ category, query: target }),
         });
-      }
-    } catch (err) {
-      console.error("AI lookup error:", err);
-      setAiError(
-        err instanceof Error ? err.message : "Unable to complete AI search. Please check your internet connection.",
-      );
-    } finally {
-      setIsSearchingAi(false);
-    }
-  };
 
-  const categoryLabel =
-    category === "scholarship"
-      ? "scholarship"
-      : category === "consultant"
-        ? "consultant"
-        : "university";
+        if (!res.ok) {
+          throw new Error(`AI search service returned status ${res.status}`);
+        }
+
+        const data = await res.json();
+        const item: DirectoryItem = data.item ?? data;
+        if (item && item.title) {
+          setAiItems((prev) => {
+            const filteredPrev = prev.filter(
+              (p) => p.title.toLowerCase().trim() !== item.title.toLowerCase().trim(),
+            );
+            return [item, ...filteredPrev];
+          });
+        }
+      } catch (err) {
+        console.error("AI lookup error:", err);
+        setAiError(
+          err instanceof Error ? err.message : "Unable to complete AI search. Please try again.",
+        );
+      } finally {
+        setIsSearchingAi(false);
+      }
+    },
+    [category, query],
+  );
+
+  // Automatically search with AI if user enters an institution/scholarship/agency not yet present in presets
+  useEffect(() => {
+    const trimmed = query.trim();
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    if (trimmed.length >= 3 && filtered.length === 0 && !isSearchingAi) {
+      if (lastSearchedAiQuery?.toLowerCase() !== trimmed.toLowerCase()) {
+        debounceRef.current = setTimeout(() => {
+          handleAiLookup(trimmed);
+        }, 500);
+      }
+    }
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [query, filtered.length, isSearchingAi, lastSearchedAiQuery, handleAiLookup]);
 
   return (
     <div>
@@ -147,7 +199,7 @@ export function DirectoryExplorer({
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            if (query.trim() && filtered.length === 0) {
+            if (query.trim()) {
               handleAiLookup(query);
             }
           }}
@@ -170,32 +222,21 @@ export function DirectoryExplorer({
           <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
             {query.trim() ? (
               <button
-                type="button"
-                onClick={() => handleAiLookup(query)}
+                type="submit"
                 disabled={isSearchingAi}
                 className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-brand-600 to-powder-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:opacity-95 active:scale-95 disabled:opacity-50 transition-all"
-                title={`Ask AI to find real-world details for "${query}"`}
+                title={`Search with AI Agent`}
               >
                 {isSearchingAi ? (
                   <Loader2 className="size-3.5 animate-spin" />
                 ) : (
                   <Sparkles className="size-3.5 text-amber-200" />
                 )}
-                <span className="hidden sm:inline">Ask AI</span>
+                <span>Search</span>
               </button>
             ) : null}
           </div>
         </form>
-
-        {/* AI Searching status or notification bar */}
-        {isSearchingAi ? (
-          <div className="mt-3 flex items-center gap-2 rounded-2xl border border-brand-200 bg-brand-50/70 px-4 py-2.5 text-xs font-semibold text-brand-800 animate-pulse">
-            <Loader2 className="size-4 animate-spin text-brand-600 shrink-0" />
-            <span>
-              Searching real-world education records, government registries, and official portals for &ldquo;{lastSearchedAiQuery}&rdquo;...
-            </span>
-          </div>
-        ) : null}
 
         {aiError ? (
           <div className="mt-3 flex items-center justify-between gap-2 rounded-2xl border border-coral-200 bg-coral-50 px-4 py-2.5 text-xs font-semibold text-coral-800">
@@ -270,47 +311,59 @@ export function DirectoryExplorer({
         </div>
       </div>
 
-      {filtered.length === 0 ? (
-        <div className="mt-6 rounded-[28px] border border-dashed border-brand-200 bg-white/80 p-8 text-center shadow-[0_24px_50px_-44px_rgba(34,48,74,0.8)]">
-          <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-brand-100 text-brand-700">
-            <Sparkles className="size-6" />
+      {filtered.length === 0 && !isSearchingAi ? (
+        <div className="mt-6 rounded-[28px] border border-white bg-white/75 p-8 text-center shadow-[0_24px_50px_-44px_rgba(34,48,74,0.8)]">
+          <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-slate-100 text-ink-500">
+            <Search className="size-6" />
           </div>
           <h3 className="mt-3 text-base font-black text-ink-900">
-            {query.trim()
-              ? `"${query.trim()}" is not in the offline preset catalog`
-              : emptyMessage}
+            {query.trim() ? `No records found matching "${query.trim()}"` : emptyMessage}
           </h3>
-          <p className="mx-auto mt-2 max-w-md text-xs leading-relaxed text-ink-600">
+          <p className="mx-auto mt-1 max-w-md text-xs leading-relaxed text-ink-500">
             {query.trim()
-              ? `Our AI agent can search live global education databases, official portals, and accredited institutional registries to find authentic details and official links for "${query.trim()}".`
+              ? "Please check the spelling or enter the full name to search official institutional records."
               : emptyMessage}
           </p>
-
-          {query.trim() ? (
-            <div className="mt-5">
-              <button
-                type="button"
-                onClick={() => handleAiLookup(query)}
-                disabled={isSearchingAi}
-                className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-brand-600 to-powder-600 px-6 py-3 text-xs font-bold text-white shadow-[0_12px_24px_-10px_rgba(70,99,214,0.8)] transition-transform hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-60"
-              >
-                {isSearchingAi ? (
-                  <>
-                    <Loader2 className="size-4 animate-spin" />
-                    Searching real-world records...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="size-4 text-amber-200" />
-                    Find &ldquo;{query.trim()}&rdquo; with AI Agent
-                  </>
-                )}
-              </button>
-            </div>
-          ) : null}
         </div>
       ) : (
         <ul className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          {isSearchingAi ? (
+            <li className="card-lift rise overflow-hidden rounded-[30px] border border-brand-300 bg-white/95 shadow-[0_24px_50px_-44px_rgba(34,48,74,0.8)] ring-2 ring-brand-500/20">
+              <div className="bg-gradient-to-r from-brand-100/90 to-powder-100/90 px-5 py-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="size-4 animate-spin text-brand-600 shrink-0" />
+                      <h3 className="text-base font-black leading-snug tracking-tight text-ink-900">
+                        {lastSearchedAiQuery ?? query}
+                      </h3>
+                    </div>
+                    <span className="mt-1 inline-flex items-center gap-1 rounded-md bg-white/90 px-1.5 py-0.5 text-[10px] font-bold text-brand-700">
+                      <Sparkles className="size-2.5 text-brand-600" />
+                      Real-time AI Verification
+                    </span>
+                  </div>
+                  <span className="shrink-0 rounded-full border border-brand-300 bg-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-brand-700">
+                    Retrieving...
+                  </span>
+                </div>
+                <p className="mt-1 text-xs font-semibold text-ink-600">
+                  Verifying official website, direct application portal, and accreditation...
+                </p>
+              </div>
+
+              <div className="space-y-3 px-5 py-4">
+                <div className="h-3.5 w-4/5 animate-pulse rounded bg-slate-200" />
+                <div className="h-3 w-3/5 animate-pulse rounded bg-slate-100" />
+                <div className="h-3 w-2/3 animate-pulse rounded bg-slate-100" />
+                <div className="flex gap-2 pt-2">
+                  <div className="h-7 w-28 animate-pulse rounded-xl bg-brand-200/70" />
+                  <div className="h-7 w-28 animate-pulse rounded-xl bg-slate-200" />
+                </div>
+              </div>
+            </li>
+          ) : null}
+
           {filtered.map((item, index) => {
             const isAiGrounded = item.id.startsWith("ai-");
             return (
@@ -417,7 +470,7 @@ export function DirectoryExplorer({
 
       <div className="mt-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs leading-relaxed text-ink-500">
         <p>
-          Offline presets are verified against curated sources. External entities are retrieved using live search grounding and accredited institutional registries.
+          Verified with real-world institutional directories, official university portals, and government accreditation bodies.
         </p>
         {aiItems.length > 0 ? (
           <button
